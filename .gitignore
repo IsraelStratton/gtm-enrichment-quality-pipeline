@@ -1,0 +1,21 @@
+# Secrets — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Local data: real Clay exports and run outputs never enter the repo
+data/
+exports/
+*.local.csv
+
+# Raw n8n exports may contain credential references — commit only the stripped copy
+n8n/*.raw.json
+
+.DS_Store
