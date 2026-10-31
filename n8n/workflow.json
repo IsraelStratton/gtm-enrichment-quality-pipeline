@@ -1,0 +1,283 @@
+{
+  "name": "GTM Enrichment Quality Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// \u2500\u2500 Industry mapping (Clay label \u2192 HubSpot enum) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst INDUSTRY_MAP = {\n  'accounting': 'ACCOUNTING',\n  'airlines/aviation': 'AIRLINES_AVIATION',\n  'alternative dispute resolution': 'ALTERNATIVE_DISPUTE_RESOLUTION',\n  'alternative medicine': 'ALTERNATIVE_MEDICINE',\n  'animation': 'ANIMATION',\n  'apparel & fashion': 'APPAREL_FASHION',\n  'architecture & planning': 'ARCHITECTURE_PLANNING',\n  'arts and crafts': 'ARTS_AND_CRAFTS',\n  'automotive': 'AUTOMOTIVE',\n  'aviation & aerospace': 'AVIATION_AEROSPACE',\n  'banking': 'BANKING',\n  'biotechnology': 'BIOTECHNOLOGY',\n  'broadcast media': 'BROADCAST_MEDIA',\n  'building materials': 'BUILDING_MATERIALS',\n  'business supplies and equipment': 'BUSINESS_SUPPLIES_AND_EQUIPMENT',\n  'capital markets': 'CAPITAL_MARKETS',\n  'chemicals': 'CHEMICALS',\n  'civic & social organization': 'CIVIC_SOCIAL_ORGANIZATION',\n  'civil engineering': 'CIVIL_ENGINEERING',\n  'commercial real estate': 'COMMERCIAL_REAL_ESTATE',\n  'computer & network security': 'COMPUTER_NETWORK_SECURITY',\n  'computer games': 'COMPUTER_GAMES',\n  'computer hardware': 'COMPUTER_HARDWARE',\n  'computer networking': 'COMPUTER_NETWORKING',\n  'computer software': 'COMPUTER_SOFTWARE',\n  'internet': 'INTERNET',\n  'construction': 'CONSTRUCTION',\n  'consumer electronics': 'CONSUMER_ELECTRONICS',\n  'consumer goods': 'CONSUMER_GOODS',\n  'consumer services': 'CONSUMER_SERVICES',\n  'cosmetics': 'COSMETICS',\n  'dairy': 'DAIRY',\n  'defense & space': 'DEFENSE_SPACE',\n  'design': 'DESIGN',\n  'education management': 'EDUCATION_MANAGEMENT',\n  'e-learning': 'E_LEARNING',\n  'electrical/electronic manufacturing': 'ELECTRICAL_ELECTRONIC_MANUFACTURING',\n  'entertainment': 'ENTERTAINMENT',\n  'environmental services': 'ENVIRONMENTAL_SERVICES',\n  'events services': 'EVENTS_SERVICES',\n  'executive office': 'EXECUTIVE_OFFICE',\n  'facilities services': 'FACILITIES_SERVICES',\n  'farming': 'FARMING',\n  'financial services': 'FINANCIAL_SERVICES',\n  'fine art': 'FINE_ART',\n  'fishery': 'FISHERY',\n  'food & beverages': 'FOOD_BEVERAGES',\n  'food production': 'FOOD_PRODUCTION',\n  'fund-raising': 'FUND_RAISING',\n  'furniture': 'FURNITURE',\n  'gambling & casinos': 'GAMBLING_CASINOS',\n  'glass, ceramics & concrete': 'GLASS_CERAMICS_CONCRETE',\n  'government administration': 'GOVERNMENT_ADMINISTRATION',\n  'government relations': 'GOVERNMENT_RELATIONS',\n  'graphic design': 'GRAPHIC_DESIGN',\n  'health, wellness and fitness': 'HEALTH_WELLNESS_AND_FITNESS',\n  'higher education': 'HIGHER_EDUCATION',\n  'hospital & health care': 'HOSPITAL_HEALTH_CARE',\n  'hospitality': 'HOSPITALITY',\n  'human resources': 'HUMAN_RESOURCES',\n  'import and export': 'IMPORT_AND_EXPORT',\n  'individual & family services': 'INDIVIDUAL_FAMILY_SERVICES',\n  'industrial automation': 'INDUSTRIAL_AUTOMATION',\n  'information services': 'INFORMATION_SERVICES',\n  'information technology and services': 'INFORMATION_TECHNOLOGY_AND_SERVICES',\n  'insurance': 'INSURANCE',\n  'international affairs': 'INTERNATIONAL_AFFAIRS',\n  'international trade and development': 'INTERNATIONAL_TRADE_AND_DEVELOPMENT',\n  'investment banking': 'INVESTMENT_BANKING',\n  'investment management': 'INVESTMENT_MANAGEMENT',\n  'judiciary': 'JUDICIARY',\n  'law enforcement': 'LAW_ENFORCEMENT',\n  'law practice': 'LAW_PRACTICE',\n  'legal services': 'LEGAL_SERVICES',\n  'legislative office': 'LEGISLATIVE_OFFICE',\n  'leisure, travel & tourism': 'LEISURE_TRAVEL_TOURISM',\n  'libraries': 'LIBRARIES',\n  'logistics and supply chain': 'LOGISTICS_AND_SUPPLY_CHAIN',\n  'luxury goods & jewelry': 'LUXURY_GOODS_JEWELRY',\n  'machinery': 'MACHINERY',\n  'management consulting': 'MANAGEMENT_CONSULTING',\n  'maritime': 'MARITIME',\n  'market research': 'MARKET_RESEARCH',\n  'marketing and advertising': 'MARKETING_AND_ADVERTISING',\n  'mechanical or industrial engineering': 'MECHANICAL_OR_INDUSTRIAL_ENGINEERING',\n  'media production': 'MEDIA_PRODUCTION',\n  'medical devices': 'MEDICAL_DEVICES',\n  'medical practice': 'MEDICAL_PRACTICE',\n  'mental health care': 'MENTAL_HEALTH_CARE',\n  'military': 'MILITARY',\n  'mining & metals': 'MINING_METALS',\n  'motion pictures and film': 'MOTION_PICTURES_AND_FILM',\n  'museums and institutions': 'MUSEUMS_AND_INSTITUTIONS',\n  'music': 'MUSIC',\n  'nanotechnology': 'NANOTECHNOLOGY',\n  'newspapers': 'NEWSPAPERS',\n  'non-profit organization management': 'NON_PROFIT_ORGANIZATION_MANAGEMENT',\n  'oil & energy': 'OIL_ENERGY',\n  'online media': 'ONLINE_MEDIA',\n  'outsourcing/offshoring': 'OUTSOURCING_OFFSHORING',\n  'package/freight delivery': 'PACKAGE_FREIGHT_DELIVERY',\n  'packaging and containers': 'PACKAGING_AND_CONTAINERS',\n  'paper & forest products': 'PAPER_FOREST_PRODUCTS',\n  'performing arts': 'PERFORMING_ARTS',\n  'pharmaceuticals': 'PHARMACEUTICALS',\n  'philanthropy': 'PHILANTHROPY',\n  'photography': 'PHOTOGRAPHY',\n  'plastics': 'PLASTICS',\n  'political organization': 'POLITICAL_ORGANIZATION',\n  'primary/secondary education': 'PRIMARY_SECONDARY_EDUCATION',\n  'printing': 'PRINTING',\n  'professional training & coaching': 'PROFESSIONAL_TRAINING_COACHING',\n  'program development': 'PROGRAM_DEVELOPMENT',\n  'public policy': 'PUBLIC_POLICY',\n  'public relations and communications': 'PUBLIC_RELATIONS_AND_COMMUNICATIONS',\n  'public safety': 'PUBLIC_SAFETY',\n  'publishing': 'PUBLISHING',\n  'railroad manufacture': 'RAILROAD_MANUFACTURE',\n  'ranching': 'RANCHING',\n  'real estate': 'REAL_ESTATE',\n  'recreational facilities and services': 'RECREATIONAL_FACILITIES_AND_SERVICES',\n  'religious institutions': 'RELIGIOUS_INSTITUTIONS',\n  'renewables & environment': 'RENEWABLES_ENVIRONMENT',\n  'research': 'RESEARCH',\n  'restaurants': 'RESTAURANTS',\n  'retail': 'RETAIL',\n  'security and investigations': 'SECURITY_AND_INVESTIGATIONS',\n  'semiconductors': 'SEMICONDUCTORS',\n  'shipbuilding': 'SHIPBUILDING',\n  'sporting goods': 'SPORTING_GOODS',\n  'sports': 'SPORTS',\n  'staffing and recruiting': 'STAFFING_AND_RECRUITING',\n  'supermarkets': 'SUPERMARKETS',\n  'telecommunications': 'TELECOMMUNICATIONS',\n  'textiles': 'TEXTILES',\n  'think tanks': 'THINK_TANKS',\n  'tobacco': 'TOBACCO',\n  'translation and localization': 'TRANSLATION_AND_LOCALIZATION',\n  'transportation/trucking/railroad': 'TRANSPORTATION_TRUCKING_RAILROAD',\n  'utilities': 'UTILITIES',\n  'venture capital & private equity': 'VENTURE_CAPITAL_PRIVATE_EQUITY',\n  'veterinary': 'VETERINARY',\n  'warehousing': 'WAREHOUSING',\n  'wholesale': 'WHOLESALE',\n  'wine and spirits': 'WINE_AND_SPIRITS',\n  'wireless': 'WIRELESS',\n  'writing and editing': 'WRITING_AND_EDITING',\n  'mobile games': 'MOBILE_GAMES'\n};\n\n// \u2500\u2500 Helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nfunction normaliseDomain(raw) {\n  let d = raw.trim().toLowerCase();\n  d = d.replace(/^[a-z][a-z0-9+.-]*:\\/\\//, '');\n  d = d.split(/[/?#]/)[0].split(':')[0];\n  if (d.startsWith('www.')) d = d.slice(4);\n  return d.replace(/\\.$/, '');\n}\n\nconst LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;\nconst TLD_RE   = /^[a-z]{2,63}$/;\n\nfunction isValidDomain(domain) {\n  if (!domain || domain.length > 253) return false;\n  const labels = domain.split('.');\n  if (labels.length < 2) return false;\n  if (!labels.every(l => LABEL_RE.test(l))) return false;\n  return TLD_RE.test(labels[labels.length - 1]);\n}\n\nfunction mapIndustry(text) {\n  const key = (text || '').trim().toLowerCase();\n  return key ? (INDUSTRY_MAP[key] || null) : null;\n}\n\n// \u2500\u2500 DQ checks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst items = $input.all();\nconst seenDomains = new Map();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const row = items[i].json;\n  const rowNum = i + 1;\n  const reasonCodes = [];\n  const flags = [];\n  let reasonDetails = [];\n\n  const companyName = (row.company_name || '').trim();\n  const rawDomain   = (row.domain || '').trim();\n\n  // DQ-01: company_name and domain both present\n  if (!companyName && !rawDomain) {\n    reasonCodes.push('MISSING_REQUIRED');\n    reasonDetails.push('both company_name and domain are blank');\n  } else if (!companyName) {\n    reasonCodes.push('MISSING_REQUIRED');\n    reasonDetails.push('company_name is blank');\n  } else if (!rawDomain) {\n    reasonCodes.push('MISSING_REQUIRED');\n    reasonDetails.push('domain is blank');\n  }\n\n  // DQ-02: valid domain after normalisation\n  let normDomain = '';\n  let domainValid = false;\n  if (rawDomain) {\n    normDomain = normaliseDomain(rawDomain);\n    if (isValidDomain(normDomain)) {\n      domainValid = true;\n    } else {\n      reasonCodes.push('INVALID_DOMAIN');\n      reasonDetails.push(`domain \"${normDomain}\" is not a valid hostname`);\n      normDomain = '';\n    }\n  }\n\n  // DQ-05: employee_count numeric when present\n  const rawEmp = (row.employee_count || '').toString().trim();\n  let empNumeric = null;\n  if (rawEmp) {\n    const cleaned = rawEmp.replace(/,/g, '');\n    if (/^\\d+$/.test(cleaned) && parseInt(cleaned, 10) >= 0) {\n      empNumeric = parseInt(cleaned, 10);\n    } else {\n      reasonCodes.push('HEADCOUNT_NOT_NUMERIC');\n      reasonDetails.push(`employee_count \"${rawEmp}\" is not a whole number >= 0`);\n    }\n  }\n\n  // DQ-06 / DQ-07: industry\n  const rawIndustry = (row.industry || '').trim();\n  let mappedIndustry = null;\n  if (!rawIndustry) {\n    flags.push('INDUSTRY_MISSING');\n  } else {\n    mappedIndustry = mapIndustry(rawIndustry);\n    if (!mappedIndustry) {\n      flags.push('INDUSTRY_UNMAPPED');\n    }\n  }\n\n  // DQ-03: duplicate domain in batch (only on rows that passed DQ-02)\n  if (domainValid) {\n    if (seenDomains.has(normDomain)) {\n      reasonCodes.push('DUPLICATE_IN_BATCH');\n      reasonDetails.push(`domain \"${normDomain}\" first seen at row ${seenDomains.get(normDomain)}`);\n    } else {\n      seenDomains.set(normDomain, rowNum);\n    }\n  }\n\n  const pass = reasonCodes.length === 0;\n\n  results.push({\n    json: {\n      company_name: companyName,\n      domain: rawDomain,\n      industry: rawIndustry,\n      employee_count: rawEmp,\n      hq_city: (row.hq_city || '').trim(),\n      hq_country: (row.hq_country || '').trim(),\n      _row_number: rowNum,\n      _normalised_domain: normDomain,\n      _mapped_industry: mappedIndustry,\n      _employee_count: empNumeric,\n      _dq_pass: pass,\n      _dq_reason_codes: reasonCodes.join('|'),\n      _dq_flags: flags.join('|'),\n      _dq_reason_detail: reasonDetails.join('; ')\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "a1000000-0000-0000-0000-000000000004",
+      "name": "DQ Checks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-pass",
+              "leftValue": "={{ $json._dq_pass }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-0000-0000-000000000005",
+      "name": "Pass or Fail",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Prepare quarantine records for the data table\nconst items = $input.all();\nconst runId = $execution.id;\nconst now = new Date().toISOString();\n\nreturn items.map(item => ({\n  json: {\n    run_id: runId,\n    row_number: item.json._row_number,\n    company_name: item.json.company_name,\n    domain: item.json.domain,\n    reason_codes: item.json._dq_reason_codes,\n    reason_detail: item.json._dq_reason_detail,\n    quarantined_at: now\n  }\n}));"
+      },
+      "id": "a1000000-0000-0000-0000-000000000006",
+      "name": "Format Quarantine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "run_id": "={{ $json.run_id }}",
+            "row_number": "={{ $json.row_number }}",
+            "company_name": "={{ $json.company_name }}",
+            "domain": "={{ $json.domain }}",
+            "reason_codes": "={{ $json.reason_codes }}",
+            "reason_detail": "={{ $json.reason_detail }}",
+            "quarantined_at": "={{ $json.quarantined_at }}"
+          }
+        },
+        "options": {},
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "7i01Eaf5nI0kmyHC"
+        },
+        "resource": "row",
+        "operation": "insert"
+      },
+      "id": "a1000000-0000-0000-0000-000000000007",
+      "name": "Quarantine Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build HubSpot batch-upsert payload from passing rows.\n// Rows with INDUSTRY_MISSING or INDUSTRY_UNMAPPED flags load\n// without industry (the field is omitted).\nconst items = $input.all();\nconst inputs = [];\n\nfor (const item of items) {\n  const d = item.json;\n  const props = {\n    name: d.company_name,\n    domain: d._normalised_domain,\n    clay_domain_key: d._normalised_domain,\n    city: d.hq_city,\n    country: d.hq_country\n  };\n  // Only set industry if mapped\n  if (d._mapped_industry) {\n    props.industry = d._mapped_industry;\n  }\n  // Only set employee count if numeric\n  if (d._employee_count !== null && d._employee_count !== undefined) {\n    props.numberofemployees = d._employee_count;\n  }\n  inputs.push({\n    idProperty: 'clay_domain_key',\n    id: d._normalised_domain,\n    properties: props\n  });\n}\n\n// Return single item with the batch payload\nreturn [{ json: { inputs } }];"
+      },
+      "id": "a1000000-0000-0000-0000-000000000008",
+      "name": "Prepare Batch Upsert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/companies/batch/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $json.inputs }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-0000-0000-000000000009",
+      "name": "HubSpot Batch Upsert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "HubSpot Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse the batch-upsert response and report create/update counts.\nconst items = $input.all();\nconst resp = items[0].json;\nconst results = resp.results || [];\n\nlet created = 0;\nlet updated = 0;\nfor (const r of results) {\n  if (r.new === true) created++;\n  else updated++;\n}\n\nreturn [{\n  json: {\n    status: resp.status,\n    total: results.length,\n    created,\n    updated,\n    results: results.map(r => ({\n      id: r.id,\n      name: r.properties?.name,\n      domain: r.properties?.domain,\n      action: r.new ? 'create' : 'update'\n    }))\n  }\n}];"
+      },
+      "id": "a1000000-0000-0000-0000-000000000010",
+      "name": "Log Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "GTM Pipeline CSV Upload",
+        "formDescription": "Upload the Clay CSV export to run DQ checks and load to HubSpot.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "CSV File",
+              "fieldType": "file",
+              "requiredField": true,
+              "acceptFileTypes": ".csv"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-0000-0000-000000000011",
+      "name": "Upload CSV",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "gtm-csv-upload"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {},
+        "binaryPropertyName": "CSV_File"
+      },
+      "id": "a1000000-0000-0000-0000-000000000012",
+      "name": "Extract CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        280,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "DQ Checks": {
+      "main": [
+        [
+          {
+            "node": "Pass or Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pass or Fail": {
+      "main": [
+        [
+          {
+            "node": "Prepare Batch Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Quarantine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Quarantine": {
+      "main": [
+        [
+          {
+            "node": "Quarantine Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Batch Upsert": {
+      "main": [
+        [
+          {
+            "node": "HubSpot Batch Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot Batch Upsert": {
+      "main": [
+        [
+          {
+            "node": "Log Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload CSV": {
+      "main": [
+        [
+          {
+            "node": "Extract CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract CSV": {
+      "main": [
+        [
+          {
+            "node": "DQ Checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

@@ -4,8 +4,8 @@
 
 ## Expected outcome (25 rows)
 
-- **13 load cleanly**
-- **2 load with a flag**
+- **12 load cleanly**
+- **3 load with a flag** (2 × `INDUSTRY_MISSING`, 1 × `INDUSTRY_UNMAPPED`)
 - **10 go to quarantine**
 
 | Row | Company | What's wrong | Expected result |
@@ -22,6 +22,7 @@
 | 12 | Coral Coast Retail | Headcount `about 200` | Quarantine `HEADCOUNT_NOT_NUMERIC` |
 | 13 | Silver Gull Insurance | Headcount `51-200` (a range) | Quarantine `HEADCOUNT_NOT_NUMERIC` |
 | 17 | Paperbark Design | Industry blank | Flag `INDUSTRY_MISSING`, still loads |
+| 22 | Jacaranda Travel | Industry `Leisure Travel & Tourism` (missing comma vs picklist `Leisure, Travel & Tourism`) | Flag `INDUSTRY_UNMAPPED`, still loads |
 | 23 | Bilby Biotech | Headcount `12.5` | Quarantine `HEADCOUNT_NOT_NUMERIC` |
 | 24 | Spinifex Solar | Headcount blank | Pass (DQ-05 only checks headcount when it's present) |
 | 25 | Platypus Water | Domain has a space **and** headcount `many` | Quarantine `INVALID_DOMAIN\|HEADCOUNT_NOT_NUMERIC` |

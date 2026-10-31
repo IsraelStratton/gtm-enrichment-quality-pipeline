@@ -135,6 +135,16 @@ class HubSpotClient:
         props = ",".join(READ_PROPERTIES)
         return self._request("GET", f"{COMPANIES}/{company_id}?properties={props}")
 
+    def batch_upsert(self, rows: list[dict], id_property: str = "clay_domain_key") -> dict:
+        """Batch upsert up to 100 companies keyed on *id_property*.
+
+        Each item in *rows* must have an ``id`` (the key value) and a
+        ``properties`` dict.  Returns the raw response; each result
+        carries ``"new": true`` (created) or ``"new": false`` (updated).
+        """
+        inputs = [{"idProperty": id_property, "id": r["id"], "properties": r["properties"]} for r in rows]
+        return self._request("POST", f"{COMPANIES}/batch/upsert", json={"inputs": inputs})
+
     def archive(self, company_id: str) -> None:
         self._request("DELETE", f"{COMPANIES}/{company_id}")
 
