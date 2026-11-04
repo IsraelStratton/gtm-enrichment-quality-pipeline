@@ -19,3 +19,6 @@ exports/
 n8n/*.raw.json
 
 .DS_Store
+
+# Local agent settings
+.claude/

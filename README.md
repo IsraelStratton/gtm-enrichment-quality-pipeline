@@ -2,7 +2,7 @@
 
 A single go-to-market data workflow: **Clay** enriches a list of companies, **n8n** runs data-quality checks on every row, and only rows that pass reach **HubSpot**, as a create or update matched on domain. Rows that fail go to a quarantine table with a reason code, so you can see and fix bad data before it reaches the CRM.
 
-> **Status:** week 2 of 3. n8n workflow, DQ-01..07 checks, industry mapping, `clay_domain_key` batch upsert and quarantine data table are live. Everything here is company-level and synthetic. The repo contains no personal contact data.
+> **Status:** complete. n8n workflow, DQ-01..07 checks, industry mapping, `clay_domain_key` batch upsert and quarantine data table are live, and the [2:45 demo](https://israel-stratton.dubb.com/v/j44nZF) is published. Everything here is company-level and synthetic. The repo contains no personal contact data.
 
 ## Architecture
 
@@ -85,7 +85,20 @@ The test writes only to the synthetic domain `gtm-pipeline-smoke-test.example`. 
 
 ## Demo
 
-Week 3: a 2–3 minute walkthrough.
+[![Watch the demo (2:45)](docs/demo-thumbnail.png)](https://israel-stratton.dubb.com/v/j44nZF)
+
+**[Watch the demo (2:45)](https://israel-stratton.dubb.com/v/j44nZF)** — the pipeline explained in six slides, then run live: upload the sample CSV, watch 25 rows split into 15 passed and 10 quarantined, see the 15 companies in HubSpot, and read the reason codes in the quarantine table.
+
+**Result of the 25-row run:** 12 loaded clean · 3 loaded with a flag (industry left blank) · 10 stopped in quarantine. A second run of the same file updated all 15 and created none. 49 tests run on every push.
+
+<details>
+<summary>How a CSV moves through the workflow (flowchart)</summary>
+
+![Pipeline flow: upload, extract, DQ checks, pass-or-fail split to HubSpot batch upsert or quarantine table](docs/pipeline-flow.png)
+
+</details>
+
+More about how I work: [israelstratton.notion.site](https://israelstratton.notion.site/Israel-Stratton-4087ffb041d781848c03fb9b55eaeb29).
 
 ## Security
 
