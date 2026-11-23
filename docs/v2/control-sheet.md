@@ -9,7 +9,8 @@ Rule: ask for the narrowest permissions that work. When a tool's built-in login 
 | Connection | Used by | Permissions asked | Can read | Can change | Can send | Can delete | Guard | Login expiry | Secret lives in |
 |---|---|---|---|---|---|---|---|---|---|
 | Google, general login "Google least reach gtm-pipeline" | n8n slice | Asked: `gmail.send` (sensitive), `drive.file` (non-sensitive), `userinfo.email` (non-sensitive). Google adds `openid` (non-sensitive) itself, shown as "Associate you with your personal info on Google" | The account's own email address; only files this app created (the tracker). No mail | The tracker | Email as the account | Files this app created | The recipient is the connected account's own inbox, read at run time. It never comes from the payload | Own app, In production, unverified: published and reconnected 23/11/2026, 13:30. Day-8 test on or after 01/12/2026 | n8n credential only. Client ID and secret are never in the repo, exports or video |
-| Make HTTP OAuth 2.0 connection "Google least reach (Make)" | Make slice | Same three as n8n, on a second client (`make`) in the same Google app. Google adds `openid` | The account's own address; only files this app created. No mail | The tracker | Email as the account | Files this app created | Recipient read from Google at run time | Production app | Make connection only |
+| Make HTTP OAuth 2.0 connection "Google least reach (Make)" | Make slice | Same three as n8n, on a second client (`make`) in the same Google app. Google adds `openid`. The connection is limited to the Sheets, Gmail and `www.googleapis.com` hosts | The account's own address; only files this app created. No mail | The tracker | Email as the account | Files this app created | Recipient read from Google at run time | Production app | Make connection only |
+| Zapier Free slice (way 1) | Zapier Form, Table and Email by Zapier | None outside Zapier | Nothing outside Zapier | The Zapier Table | Email from Zapier's own mail service | Nothing outside Zapier | The owner address is typed once, in Zap 2. It is kept out of the video and any export | Not applicable | Zapier account |
 | Zapier Google connection | Zapier way 2 | To be read at connection, before approval | | | | | | | Zapier connection |
 | Zapier MCP | Claude, way 3 | To be set when connected | | | | | | | Zapier |
 | Claude API key | Chapter 2 onwards | Workspace `gtm-pipeline`, US$10 monthly limit | | | | | | Expires 23/12/2026 | `.env` (ignored by git) |
@@ -20,7 +21,7 @@ Rule: ask for the narrowest permissions that work. When a tool's built-in login 
 | Entry point | Who can call it | Guard today | Open point |
 |---|---|---|---|
 | n8n webhook `POST /webhook/gtm-v2-approved-lead` | Anything that can reach port 5678. Docker publishes it on every network interface, so other devices on the same network can reach it | Requires the `X-Slice-Key` header (n8n Header Auth credential "Slice webhook key (n8n)"; the key lives in that credential and `.env`). Live 23/11/2026, 13:51 | Proved: no key and a wrong key both get HTTP 403 and start no run; the right key gets 200 |
-| Make webhook `gtm-v2-approved-lead` | Anyone holding its address | Make's built-in API key check (`x-make-apikey`) | Built in Part M of the Make guide |
+| Make webhook `gtm-v2-approved-lead` | Anyone holding its address | Make's built-in API key check (`x-make-apikey`); the key lives in Make's keychain and `.env` | Proved 23/11/2026: no key and a wrong key both get 401 and write nothing |
 
 ## Logins considered and not used
 

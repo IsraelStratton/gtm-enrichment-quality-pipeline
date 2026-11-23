@@ -8,14 +8,16 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 |---|---|---|---|---|
 | Plan | Community Edition, local | Free | Free | 14-day trial |
 | Entry point | Webhook | Custom webhook | Zapier Form (no webhooks on Free) | Webhook |
-| Steps in the slice | 6 nodes | | | |
-| Logins | 1: the general Google login, 3 permissions | | | |
+| Design | One workflow | One scenario | Two Zaps joined through a Zapier Table; Email by Zapier; no outside login | One Zap with AI and approval steps |
+| Steps in the slice | 6 nodes | 5 modules | | |
+| Logins | 1: the general Google login, 3 permissions | 1: an HTTP OAuth 2.0 connection on a second client in the same Google app, same 3 permissions | | |
 | Where the row goes | Shared Google Sheet | Shared Google Sheet | Zapier Table | Shared Google Sheet |
-| Plan limits met | None | | | |
-| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | | | |
-| Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | | | |
-| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | | | |
-| How it was made | Workflow file written by the Code chat, imported by the planning chat | | | |
+| Plan limits met | None | None in the slice. Free allows 1,000 credits a month and 2 active scenarios | | |
+| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | Built-in API key (`x-make-apikey`); wrong or missing key gets 401 | | |
+| Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | Make's Google Sheets module needs full Drive access, so the slice uses the HTTP module with its own OAuth connection. Base64url is made with `base64()` and three `replace()` calls. Mappings must be pasted, not typed | | |
+| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | 5 module runs; about 5 credits (to confirm from the scenario history) | | |
+| Time from send to arrival | 0.03 to 0.5 s (local) | 1.1 to 1.2 s (Make's EU cloud) | | |
+| How it was made | Workflow file written by the Code chat, imported by the planning chat | Built in Make's editor by the planning chat from the guide | | |
 
 ## Setup log
 
@@ -27,6 +29,8 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | 23/11/2026, 13:14 to 13:15 | n8n test: three leads at the live address | Pass. 3 runs, every step green; 3 rows with `written_by` = `n8n`; 3 emails to the `+gtm-slice` address. Each lead reached n8n 53 to 480 ms after it was sent; each run took 1.9 to 3.8 s |
 | 23/11/2026, 13:30 | Google app published to production, unverified; n8n login reconnected | Consent screen: the three permissions asked for, plus Google's own `openid` sign-in line |
 | 23/11/2026, 13:34 | Proof run with the new login | Pass: every step green, row 5 in the tracker, email arrived |
+| 23/11/2026, 14:22 | Make scenario built and switched on, with a second Google client `make` and the webhook key | Five modules; connection limited to the three Google API hosts |
+| 23/11/2026, 14:23 to 14:24 | Make test: three leads with the key, then no key and a wrong key | Pass. 3 rows with `written_by` = `make` and 3 emails to the `+gtm-slice` address. Both bad calls got 401 and wrote nothing. Make's client reached the sheet n8n's client made, so `drive.file` covers the whole Google app |
 | 23/11/2026, 13:51 | n8n webhook switched to require the `X-Slice-Key` header, through the n8n API | No key: 403, no run. Wrong key: 403, no run. Right key: 200, run passed. One extra keyed test call added a sixth made-up row |
 
 ## Limits met
@@ -67,6 +71,18 @@ Written at the end of the chapter, from the comparison and the limits above.
 **Why it is built this way.** n8n's ready-made Gmail and Sheets steps need a login that can read and delete all mail and every spreadsheet. This one can only send mail, see its own address, and touch the one sheet it created.
 
 **Say it in one line.** "When a lead is approved, n8n logs it in a shared sheet and emails the owner, using a Google login that can't read anyone's mail."
+
+### Make
+
+1. The same approved lead arrives at a Make webhook. Make checks the key before the scenario starts, and refuses a call without it.
+2. An HTTP module adds the row to the same shared sheet. It uses its own Google login, made in the same Google app, so it reaches the sheet n8n made and nothing else.
+3. A second HTTP module asks Google which account is signed in.
+4. A Tools module writes the email, addressed to that account's own inbox.
+5. A third HTTP module sends it through the Gmail API.
+
+**Why it is built this way.** Make's ready-made Google Sheets module needs access to every file in Drive. The HTTP module lets the scenario keep the same three narrow permissions as n8n.
+
+**Say it in one line.** "Make does the same job in five steps in the cloud, with the same narrow Google login and a key on its webhook."
 
 ## Day-8 test of the Google login
 
