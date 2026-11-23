@@ -9,15 +9,15 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | Plan | Community Edition, local | Free | Free | 14-day trial |
 | Entry point | Webhook | Custom webhook | Zapier Form (no webhooks on Free) | Webhook |
 | Design | One workflow | One scenario | Two Zaps joined through a Zapier Table; Email by Zapier; no outside login | One Zap with AI and approval steps |
-| Steps in the slice | 6 nodes | 5 modules | | |
-| Logins | 1: the general Google login, 3 permissions | 1: an HTTP OAuth 2.0 connection on a second client in the same Google app, same 3 permissions | | |
+| Steps in the slice | 6 nodes | 5 modules | 2 Zaps of 2 steps each, plus a Form and a Table | |
+| Logins | 1: the general Google login, 3 permissions | 1: an HTTP OAuth 2.0 connection on a second client in the same Google app, same 3 permissions | None outside Zapier | |
 | Where the row goes | Shared Google Sheet | Shared Google Sheet | Zapier Table | Shared Google Sheet |
-| Plan limits met | None | None in the slice. Free allows 1,000 credits a month and 2 active scenarios | | |
-| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | Built-in API key (`x-make-apikey`); wrong or missing key gets 401 | | |
-| Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | Make's Google Sheets module needs full Drive access, so the slice uses the HTTP module with its own OAuth connection. Base64url is made with `base64()` and three `replace()` calls. Mappings must be pasted, not typed | | |
-| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | 5 module runs; about 5 credits (to confirm from the scenario history) | | |
-| Time from send to arrival | 0.03 to 0.5 s (local) | 1.1 to 1.2 s (Make's EU cloud) | | |
-| How it was made | Workflow file written by the Code chat, imported by the planning chat | Built in Make's editor by the planning chat from the guide | | |
+| Plan limits met | None | None in the slice. Free allows 1,000 credits a month and 2 active scenarios | No webhooks; one action per Zap; Email by Zapier sends 5 emails a day; step tests email only the account's own address | |
+| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | Built-in API key (`x-make-apikey`); wrong or missing key gets 401 | No webhook. Entry is a Zapier Form, filled in by the approver | |
+| Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | Make's Google Sheets module needs full Drive access, so the slice uses the HTTP module with its own OAuth connection. Base64url is made with `base64()` and three `replace()` calls. Mappings must be pasted, not typed | A Form stands in for the webhook; a Table joins the two Zaps; the email is shorter, because the Table does not carry the enquiry and reason | |
+| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | 5 module runs; 5 credits | 1 task: the email step. Zapier did not charge for the Table step | |
+| Time from send to arrival | 0.03 to 0.5 s (local) | 1.1 to 1.2 s (Make's EU cloud) | About 4 s from form submission to the email in the inbox | |
+| How it was made | Workflow file written by the Code chat, imported by the planning chat | Built in Make's editor by the planning chat from the guide | Built in Zapier's editor by the planning chat from the guide | |
 
 ## Setup log
 
@@ -31,6 +31,9 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | 23/11/2026, 13:34 | Proof run with the new login | Pass: every step green, row 5 in the tracker, email arrived |
 | 23/11/2026, 14:22 | Make scenario built and switched on, with a second Google client `make` and the webhook key | Five modules; connection limited to the three Google API hosts |
 | 23/11/2026, 14:23 to 14:24 | Make test: three leads with the key, then no key and a wrong key | Pass. 3 rows with `written_by` = `make` and 3 emails to the `+gtm-slice` address. Both bad calls got 401 and wrote nothing. Make's client reached the sheet n8n's client made, so `drive.file` covers the whole Google app |
+| 23/11/2026, 15:09 | Zapier Free: Table, Form, Zap 1 and Zap 2 built; form submitted three times | Pass. 3 successful runs of each Zap; 3 Table records with `written_by` = `zapier` (plus one from Zap 1's step test); 3 emails from Email by Zapier to the `+gtm-slice` address, each with the right run ID. 3 of 100 tasks used. Both Zaps switched off afterwards. Changes from the guide: `route`, `priority` and `decision` are short text, and Zapier's Copilot could not map the fields, so they were mapped by hand |
+| 23/11/2026, 15:30 | Zapier way 4: admin settings on paper | [zapier-admin-on-paper.md](zapier-admin-on-paper.md), from the Admin Essentials course (KB-124). Knowledge, not practice |
+| 23/11/2026, 15:15 | Make blueprint exported and cleaned into [the repo](../../slice/make/slice-scenario.blueprint.json) | Tracker ID, webhook number and connection number replaced by placeholders; a test holds it to the design |
 | 23/11/2026, 13:51 | n8n webhook switched to require the `X-Slice-Key` header, through the n8n API | No key: 403, no run. Wrong key: 403, no run. Right key: 200, run passed. One extra keyed test call added a sixth made-up row |
 
 ## Limits met
@@ -46,13 +49,13 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 
 ## Cost per lead
 
-To be filled from real runs.
+From the test runs on 23/11/2026.
 
 | Tool | Units used by one lead | Free allowance | Leads a month on the free plan | Money |
 |---|---|---|---|---|
 | n8n (local) | 1 execution | No limit | No limit | US$0 |
-| Make Free | | 1,000 credits a month | | US$0 |
-| Zapier Free | | 100 tasks a month | | US$0 |
+| Make Free | 5 credits (5 operations) | 1,000 credits a month | 200 | US$0 |
+| Zapier Free | 1 task | 100 tasks a month, and 5 emails a day from Email by Zapier | 100, at most 5 a day | US$0 |
 
 ## When to use which
 
@@ -71,6 +74,16 @@ Written at the end of the chapter, from the comparison and the limits above.
 **Why it is built this way.** n8n's ready-made Gmail and Sheets steps need a login that can read and delete all mail and every spreadsheet. This one can only send mail, see its own address, and touch the one sheet it created.
 
 **Say it in one line.** "When a lead is approved, n8n logs it in a shared sheet and emails the owner, using a Google login that can't read anyone's mail."
+
+### Zapier (Free)
+
+1. A person approves a lead by filling in a Zapier Form. Free has no webhooks, so the form is the way in.
+2. Zap 1 adds a record to a Zapier Table. That is its only action, because Free allows one per Zap.
+3. Zap 2 starts when the new record appears, and emails the owner through Zapier's own mail service.
+
+**Why it is built this way.** The Table joins two one-action Zaps into one flow. Nothing leaves Zapier, so no outside login is needed.
+
+**Say it in one line.** "On Zapier's free plan I split the job into two Zaps joined by a table, and it needs no access to anyone's mail or files."
 
 ### Make
 
@@ -108,3 +121,4 @@ The Google app goes to production but stays unverified. Google's pages do not sa
 - [ ] Never open the n8n execution data of the "Get owner inbox" or "Build owner email" nodes: they hold the address.
 - [ ] In Google Sheets, crop out the account avatar and the Share dialog.
 - [ ] The tracker and the emails hold made-up company data only.
+- [ ] Email by Zapier adds a footer with a "stop these emails" link and the Zap's number. Crop it.

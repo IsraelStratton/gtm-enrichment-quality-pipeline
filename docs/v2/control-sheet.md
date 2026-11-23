@@ -21,6 +21,7 @@ Rule: ask for the narrowest permissions that work. When a tool's built-in login 
 | Entry point | Who can call it | Guard today | Open point |
 |---|---|---|---|
 | n8n webhook `POST /webhook/gtm-v2-approved-lead` | Anything that can reach port 5678. Docker publishes it on every network interface, so other devices on the same network can reach it | Requires the `X-Slice-Key` header (n8n Header Auth credential "Slice webhook key (n8n)"; the key lives in that credential and `.env`). Live 23/11/2026, 13:51 | Proved: no key and a wrong key both get HTTP 403 and start no run; the right key gets 200 |
+| Zapier Form "Approve a lead" (Free slice) | Anyone with its zapier.app link: the form is public | None on Free. Both Zaps are switched off outside tests and demos, so a submission starts nothing | Check whether Zapier Forms can require a sign-in on Free. Worst case while the Zaps are on: a made-up record and an email to the owner's own inbox. One submission was made before the Zaps were live: no run, no record |
 | Make webhook `gtm-v2-approved-lead` | Anyone holding its address | Make's built-in API key check (`x-make-apikey`); the key lives in Make's keychain and `.env` | Proved 23/11/2026: no key and a wrong key both get 401 and write nothing |
 
 ## Logins considered and not used

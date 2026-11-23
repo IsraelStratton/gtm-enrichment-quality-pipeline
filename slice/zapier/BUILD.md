@@ -14,7 +14,8 @@ Zapier Form "Approve a lead" -> Zap 1 -> Zapier Table "GTM v2 tracker (Zapier)" 
 
 - **The entry point is a person approving.** The approver fills in a Zapier Form. That stands in for the shared webhook, which Free cannot have.
 - **No outside login.** The Form, the Table and Email by Zapier are all inside Zapier, so this version reaches nothing in Google.
-- **Cost.** Each lead uses 2 tasks, one per Zap. Free allows 100 a month, so about 50 leads.
+- **Cost.** Each lead uses 1 task: Zapier did not charge for the Table step. Free allows 100 tasks a month, and Email by Zapier sends at most 5 emails a day.
+- **State, 23/11/2026, 15:15.** Built by COURSES 2ND and tested: 3 leads, 3 runs of each Zap, 3 records, 3 emails, 3 tasks. Both Zaps are now off. The form is public on zapier.app (see the [control sheet](../../docs/v2/control-sheet.md)).
 
 ### 1. The Table: `GTM v2 tracker (Zapier)`
 
@@ -33,11 +34,11 @@ Zapier, **Forms** (Interfaces), **Create**, a form named `Approve a lead`. **Do 
 | `domain` | Short text | |
 | `industry` | Short text | |
 | `enquiry` | Long text | |
-| `route` | Dropdown | `enterprise_anz`, `mid_market` |
-| `priority` | Dropdown | `high`, `medium`, `low` |
+| `route` | Short text | `enterprise_anz` or `mid_market` |
+| `priority` | Short text | `high`, `medium` or `low` |
 | `owner_team` | Short text | |
 | `reason` | Long text | |
-| `decision` | Dropdown | `approved`, `changed` |
+| `decision` | Short text | `approved` or `changed` |
 | `approved_by` | Short text | |
 
 ### 3. Zap 1: `GTM v2 slice 1 of 2: approved lead to tracker`
@@ -54,7 +55,7 @@ Zapier, **Forms** (Interfaces), **Create**, a form named `Approve a lead`. **Do 
 | `sent_at` | The submission's created time |
 | `received_at` | `{{zap_meta_utc_iso}}` |
 
-Test the trigger with one submission, test the action, then **Publish**.
+Test the trigger with one submission, test the action, then **Publish**. Zapier's Copilot could not map these fields on 23/11/2026, so map them by hand. The step test writes one real record.
 
 ### 4. Zap 2: `GTM v2 slice 2 of 2: tracker row to owner email`
 
@@ -77,13 +78,13 @@ Sent by the Zapier slice (Free plan). Made-up demo data.
 
 The Table has no `industry`, `enquiry` or `reason` field, so Zap 2's email is shorter than the n8n and Make ones. That is one cost of joining the Zaps through a Table on Free.
 
-Test, then **Publish**.
+Skip Zap 2's step test: on Free it emails only the account's own address, and it counts towards the 5 emails a day. **Publish**.
 
 ### 5. Test (COURSES 2ND, then the Code chat)
 
 1. Submit the form three times, with the values of `L-0001`, `L-0002` and `L-0003` from [approved_leads.json](../approved_leads.json).
 2. Pass when Zap 1 and Zap 2 each show three successful runs, and the Table holds three records with `written_by` = `zapier`. The Code chat then checks for three emails from Email by Zapier.
-3. Note the tasks used. Expect 6.
+3. Note the tasks used. Expect 3.
 
 Then switch both Zaps off, unless the Pro trial follows straight away (KB-135, section 5).
 

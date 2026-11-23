@@ -1,0 +1,1104 @@
+{
+  "name": "GTM v2 slice: approved lead (Make)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": "MAKE_HOOK_ID",
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        },
+        "setupValidation": {
+          "version": 1,
+          "configuration": "69b17cecd3d5a0f7",
+          "result": {
+            "valid": true,
+            "fields": []
+          }
+        },
+        "restore": {
+          "parameters": {
+            "hook": {
+              "label": "gtm-v2-approved-lead",
+              "data": {
+                "editable": "true"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hook",
+            "type": "hook:gateway-webhook",
+            "label": "Webhook",
+            "required": true
+          },
+          {
+            "name": "maxResults",
+            "type": "number",
+            "label": "Maximum number of results"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "authenticationType": "oAuth",
+        "tlsType": "",
+        "oAuthAccount": "MAKE_CONNECTION_ID"
+      },
+      "mapper": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/rows!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS",
+        "method": "post",
+        "contentType": "json",
+        "parseResponse": true,
+        "stopOnHttpError": true,
+        "timeout": "40",
+        "allowRedirects": true,
+        "shareCookies": false,
+        "requestCompressedContent": true,
+        "inputMethod": "jsonString",
+        "jsonStringBodyContent": "{\"values\":[[\"make\",\"{{1.run_id}}\",\"{{1.lead_id}}\",\"{{1.company_name}}\",\"{{1.domain}}\",\"{{1.route}}\",\"{{1.priority}}\",\"{{1.owner_team}}\",\"{{1.decision}}\",\"{{1.approved_by}}\",\"{{1.approved_at}}\",\"{{1.sent_at}}\",\"{{now}}\"]]}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        },
+        "setupValidation": {
+          "version": 1,
+          "configuration": "c9b3bb6110ba16fd",
+          "result": {
+            "valid": true,
+            "fields": []
+          }
+        },
+        "restore": {
+          "parameters": {
+            "authenticationType": {
+              "label": "OAuth 2.0Use when the service requires client credentials (Client ID and Secret)."
+            },
+            "tlsType": {
+              "label": "Empty"
+            },
+            "oAuthAccount": {
+              "label": "Google least reach (Make)",
+              "data": {
+                "scoped": "true",
+                "connection": "oauth2"
+              }
+            }
+          },
+          "expect": {
+            "method": {
+              "mode": "chose",
+              "label": "POST"
+            },
+            "headers": {
+              "mode": "chose"
+            },
+            "queryParameters": {
+              "mode": "chose"
+            },
+            "contentType": {
+              "label": "application/jsonEnter data in the JSON format, as a string or using a data structure."
+            },
+            "parseResponse": {
+              "mode": "chose"
+            },
+            "stopOnHttpError": {
+              "mode": "chose"
+            },
+            "allowRedirects": {
+              "mode": "chose"
+            },
+            "shareCookies": {
+              "mode": "chose"
+            },
+            "requestCompressedContent": {
+              "mode": "chose"
+            },
+            "inputMethod": {
+              "label": "JSON stringEnter the JSON body as a raw text string. If values contain JSON reserved characters, you must escape them manually."
+            },
+            "paginationType": {
+              "label": "Empty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "authenticationType",
+            "type": "select",
+            "label": "Authentication type",
+            "required": true,
+            "validate": {
+              "enum": [
+                "noAuth",
+                "apiKeyConnection",
+                "basicAuthConnection",
+                "oAuth",
+                "apiKey",
+                "basicAuth"
+              ]
+            }
+          },
+          {
+            "name": "tlsType",
+            "type": "select",
+            "label": "Transport layer security (TLS)",
+            "validate": {
+              "enum": [
+                "mTls",
+                "tls"
+              ]
+            }
+          },
+          {
+            "name": "proxyKeychain",
+            "type": "keychain:proxy",
+            "label": "Proxy"
+          },
+          {
+            "name": "oAuthAccount",
+            "type": "account:oauth2",
+            "label": "Credentials",
+            "required": true
+          }
+        ],
+        "expect": [
+          {
+            "name": "url",
+            "type": "url",
+            "label": "URL",
+            "required": true
+          },
+          {
+            "name": "method",
+            "type": "select",
+            "label": "Method",
+            "required": true,
+            "validate": {
+              "enum": [
+                "get",
+                "head",
+                "post",
+                "put",
+                "patch",
+                "delete",
+                "options"
+              ]
+            }
+          },
+          {
+            "name": "headers",
+            "type": "array",
+            "label": "Headers",
+            "spec": {
+              "name": "value",
+              "label": "Header",
+              "type": "collection",
+              "spec": [
+                {
+                  "name": "name",
+                  "label": "Name",
+                  "type": "text",
+                  "required": true,
+                  "validate": {
+                    "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                  }
+                },
+                {
+                  "name": "value",
+                  "label": "Value",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          {
+            "name": "queryParameters",
+            "type": "array",
+            "label": "Query parameters",
+            "spec": {
+              "name": "value",
+              "label": "Parameter",
+              "type": "collection",
+              "spec": [
+                {
+                  "name": "name",
+                  "label": "Name",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "value",
+                  "label": "Value",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          {
+            "name": "contentType",
+            "type": "select",
+            "label": "Body content type",
+            "validate": {
+              "enum": [
+                "json",
+                "multipart",
+                "urlEncoded",
+                "custom"
+              ]
+            }
+          },
+          {
+            "name": "parseResponse",
+            "type": "boolean",
+            "label": "Parse response",
+            "required": true
+          },
+          {
+            "name": "stopOnHttpError",
+            "type": "boolean",
+            "label": "Return error if HTTP request fails",
+            "required": true
+          },
+          {
+            "name": "timeout",
+            "type": "uinteger",
+            "label": "Timeout",
+            "validate": {
+              "min": 1,
+              "max": 300
+            }
+          },
+          {
+            "name": "allowRedirects",
+            "type": "boolean",
+            "label": "Allow redirects",
+            "required": true
+          },
+          {
+            "name": "shareCookies",
+            "type": "boolean",
+            "label": "Share cookies with other HTTP modules",
+            "required": true
+          },
+          {
+            "name": "requestCompressedContent",
+            "type": "boolean",
+            "label": "Request compressed content",
+            "required": true
+          },
+          {
+            "name": "inputMethod",
+            "type": "select",
+            "label": "Body input method",
+            "required": true,
+            "validate": {
+              "enum": [
+                "dataStructure",
+                "jsonString"
+              ]
+            }
+          },
+          {
+            "name": "jsonStringBodyContent",
+            "type": "text",
+            "label": "Body content",
+            "required": true
+          },
+          {
+            "name": "paginationType",
+            "type": "select",
+            "label": "Pagination type",
+            "validate": {
+              "enum": [
+                "offsetBased",
+                "pageBased",
+                "urlBased",
+                "tokenBased"
+              ]
+            }
+          }
+        ],
+        "interface": [
+          {
+            "name": "data",
+            "label": "Data",
+            "type": "any"
+          },
+          {
+            "name": "statusCode",
+            "label": "Status Code",
+            "type": "number"
+          },
+          {
+            "name": "headers",
+            "label": "Headers",
+            "type": "collection",
+            "spec": [
+              {
+                "name": "content-length",
+                "label": "Content-Length",
+                "type": "text"
+              },
+              {
+                "name": "content-encoding",
+                "label": "Content-Encoding",
+                "type": "text"
+              },
+              {
+                "name": "content-type",
+                "label": "Content-Type",
+                "type": "text"
+              },
+              {
+                "name": "server",
+                "label": "Server",
+                "type": "text"
+              },
+              {
+                "name": "cache-control",
+                "label": "Cache-Control",
+                "type": "text"
+              },
+              {
+                "name": "set-cookie",
+                "label": "Set-Cookie",
+                "type": "array",
+                "spec": {
+                  "type": "text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "authenticationType": "oAuth",
+        "tlsType": "",
+        "oAuthAccount": "MAKE_CONNECTION_ID"
+      },
+      "mapper": {
+        "url": "https://www.googleapis.com/oauth2/v3/userinfo",
+        "method": "get",
+        "parseResponse": true,
+        "stopOnHttpError": true,
+        "timeout": "40",
+        "allowRedirects": true,
+        "shareCookies": false,
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        },
+        "setupValidation": {
+          "version": 1,
+          "configuration": "97a8ca5c0ac79926",
+          "result": {
+            "valid": true,
+            "fields": []
+          }
+        },
+        "restore": {
+          "parameters": {
+            "authenticationType": {
+              "label": "OAuth 2.0Use when the service requires client credentials (Client ID and Secret)."
+            },
+            "tlsType": {
+              "label": "Empty"
+            },
+            "oAuthAccount": {
+              "label": "Google least reach (Make)",
+              "data": {
+                "scoped": "true",
+                "connection": "oauth2"
+              }
+            }
+          },
+          "expect": {
+            "method": {
+              "mode": "chose",
+              "label": "GET"
+            },
+            "headers": {
+              "mode": "chose"
+            },
+            "queryParameters": {
+              "mode": "chose"
+            },
+            "contentType": {
+              "label": "Empty"
+            },
+            "parseResponse": {
+              "mode": "chose"
+            },
+            "stopOnHttpError": {
+              "mode": "chose"
+            },
+            "allowRedirects": {
+              "mode": "chose"
+            },
+            "shareCookies": {
+              "mode": "chose"
+            },
+            "requestCompressedContent": {
+              "mode": "chose"
+            },
+            "paginationType": {
+              "label": "Empty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "authenticationType",
+            "type": "select",
+            "label": "Authentication type",
+            "required": true,
+            "validate": {
+              "enum": [
+                "noAuth",
+                "apiKeyConnection",
+                "basicAuthConnection",
+                "oAuth",
+                "apiKey",
+                "basicAuth"
+              ]
+            }
+          },
+          {
+            "name": "tlsType",
+            "type": "select",
+            "label": "Transport layer security (TLS)",
+            "validate": {
+              "enum": [
+                "mTls",
+                "tls"
+              ]
+            }
+          },
+          {
+            "name": "proxyKeychain",
+            "type": "keychain:proxy",
+            "label": "Proxy"
+          },
+          {
+            "name": "oAuthAccount",
+            "type": "account:oauth2",
+            "label": "Credentials",
+            "required": true
+          }
+        ],
+        "expect": [
+          {
+            "name": "url",
+            "type": "url",
+            "label": "URL",
+            "required": true
+          },
+          {
+            "name": "method",
+            "type": "select",
+            "label": "Method",
+            "required": true,
+            "validate": {
+              "enum": [
+                "get",
+                "head",
+                "post",
+                "put",
+                "patch",
+                "delete",
+                "options"
+              ]
+            }
+          },
+          {
+            "name": "headers",
+            "type": "array",
+            "label": "Headers",
+            "spec": {
+              "name": "value",
+              "label": "Header",
+              "type": "collection",
+              "spec": [
+                {
+                  "name": "name",
+                  "label": "Name",
+                  "type": "text",
+                  "required": true,
+                  "validate": {
+                    "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                  }
+                },
+                {
+                  "name": "value",
+                  "label": "Value",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          {
+            "name": "queryParameters",
+            "type": "array",
+            "label": "Query parameters",
+            "spec": {
+              "name": "value",
+              "label": "Parameter",
+              "type": "collection",
+              "spec": [
+                {
+                  "name": "name",
+                  "label": "Name",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "value",
+                  "label": "Value",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          {
+            "name": "contentType",
+            "type": "select",
+            "label": "Body content type",
+            "validate": {
+              "enum": [
+                "json",
+                "multipart",
+                "urlEncoded",
+                "custom"
+              ]
+            }
+          },
+          {
+            "name": "parseResponse",
+            "type": "boolean",
+            "label": "Parse response",
+            "required": true
+          },
+          {
+            "name": "stopOnHttpError",
+            "type": "boolean",
+            "label": "Return error if HTTP request fails",
+            "required": true
+          },
+          {
+            "name": "timeout",
+            "type": "uinteger",
+            "label": "Timeout",
+            "validate": {
+              "min": 1,
+              "max": 300
+            }
+          },
+          {
+            "name": "allowRedirects",
+            "type": "boolean",
+            "label": "Allow redirects",
+            "required": true
+          },
+          {
+            "name": "shareCookies",
+            "type": "boolean",
+            "label": "Share cookies with other HTTP modules",
+            "required": true
+          },
+          {
+            "name": "requestCompressedContent",
+            "type": "boolean",
+            "label": "Request compressed content",
+            "required": true
+          },
+          {
+            "name": "paginationType",
+            "type": "select",
+            "label": "Pagination type",
+            "validate": {
+              "enum": [
+                "offsetBased",
+                "pageBased",
+                "urlBased",
+                "tokenBased"
+              ]
+            }
+          }
+        ],
+        "interface": [
+          {
+            "name": "data",
+            "label": "Data",
+            "type": "any"
+          },
+          {
+            "name": "statusCode",
+            "label": "Status Code",
+            "type": "number"
+          },
+          {
+            "name": "headers",
+            "label": "Headers",
+            "type": "collection",
+            "spec": [
+              {
+                "name": "content-length",
+                "label": "Content-Length",
+                "type": "text"
+              },
+              {
+                "name": "content-encoding",
+                "label": "Content-Encoding",
+                "type": "text"
+              },
+              {
+                "name": "content-type",
+                "label": "Content-Type",
+                "type": "text"
+              },
+              {
+                "name": "server",
+                "label": "Server",
+                "type": "text"
+              },
+              {
+                "name": "cache-control",
+                "label": "Cache-Control",
+                "type": "text"
+              },
+              {
+                "name": "set-cookie",
+                "label": "Set-Cookie",
+                "type": "array",
+                "spec": {
+                  "type": "text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "module": "util:ComposeTransformer",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "value": "To: {{replace(3.data.email; \"@\"; \"+gtm-slice@\")}}\nSubject: Approved lead for {{1.owner_team}}: {{1.company_name}} ({{1.priority}})\nMIME-Version: 1.0\nContent-Type: text/plain; charset=\"UTF-8\"\nContent-Transfer-Encoding: 8bit\n\n{{1.company_name}} ({{1.domain}}) is approved for {{1.owner_team}}.\n\nRoute: {{1.route}}\nPriority: {{1.priority}}\nIndustry: {{1.industry}}\nEnquiry: {{1.enquiry}}\nReason: {{1.reason}}\nDecision: {{1.decision}} by {{1.approved_by}} at {{1.approved_at}}\n\nRun: {{1.run_id}}\nSent by the Make slice. Made-up demo data."
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0,
+          "messages": [
+            {
+              "category": "last",
+              "severity": "warning",
+              "message": "You're not using the data generated by this module. Consider removing it, or add module(s) after it."
+            }
+          ]
+        },
+        "setupValidation": {
+          "version": 1,
+          "configuration": "9448ddaa8d825772",
+          "result": {
+            "valid": true,
+            "fields": []
+          }
+        },
+        "restore": {},
+        "expect": [
+          {
+            "name": "value",
+            "type": "text",
+            "label": "Text"
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "authenticationType": "oAuth",
+        "tlsType": "",
+        "oAuthAccount": "MAKE_CONNECTION_ID"
+      },
+      "mapper": {
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "method": "post",
+        "contentType": "json",
+        "parseResponse": true,
+        "stopOnHttpError": true,
+        "timeout": "40",
+        "allowRedirects": true,
+        "shareCookies": false,
+        "requestCompressedContent": true,
+        "inputMethod": "jsonString",
+        "jsonStringBodyContent": "{\"raw\":\"{{replace(replace(replace(base64(4.value); \"+\"; \"-\"); \"/\"; \"_\"); \"=\"; emptystring)}}\"}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        },
+        "setupValidation": {
+          "version": 1,
+          "configuration": "f6db02a33e759b56",
+          "result": {
+            "valid": true,
+            "fields": []
+          }
+        },
+        "restore": {
+          "parameters": {
+            "authenticationType": {
+              "label": "OAuth 2.0Use when the service requires client credentials (Client ID and Secret)."
+            },
+            "tlsType": {
+              "label": "Empty"
+            },
+            "oAuthAccount": {
+              "label": "Google least reach (Make)",
+              "data": {
+                "scoped": "true",
+                "connection": "oauth2"
+              }
+            }
+          },
+          "expect": {
+            "method": {
+              "mode": "chose",
+              "label": "POST"
+            },
+            "headers": {
+              "mode": "chose"
+            },
+            "queryParameters": {
+              "mode": "chose"
+            },
+            "contentType": {
+              "label": "application/jsonEnter data in the JSON format, as a string or using a data structure."
+            },
+            "parseResponse": {
+              "mode": "chose"
+            },
+            "stopOnHttpError": {
+              "mode": "chose"
+            },
+            "allowRedirects": {
+              "mode": "chose"
+            },
+            "shareCookies": {
+              "mode": "chose"
+            },
+            "requestCompressedContent": {
+              "mode": "chose"
+            },
+            "inputMethod": {
+              "label": "JSON stringEnter the JSON body as a raw text string. If values contain JSON reserved characters, you must escape them manually."
+            },
+            "paginationType": {
+              "label": "Empty"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "authenticationType",
+            "type": "select",
+            "label": "Authentication type",
+            "required": true,
+            "validate": {
+              "enum": [
+                "noAuth",
+                "apiKeyConnection",
+                "basicAuthConnection",
+                "oAuth",
+                "apiKey",
+                "basicAuth"
+              ]
+            }
+          },
+          {
+            "name": "tlsType",
+            "type": "select",
+            "label": "Transport layer security (TLS)",
+            "validate": {
+              "enum": [
+                "mTls",
+                "tls"
+              ]
+            }
+          },
+          {
+            "name": "proxyKeychain",
+            "type": "keychain:proxy",
+            "label": "Proxy"
+          },
+          {
+            "name": "oAuthAccount",
+            "type": "account:oauth2",
+            "label": "Credentials",
+            "required": true
+          }
+        ],
+        "expect": [
+          {
+            "name": "url",
+            "type": "url",
+            "label": "URL",
+            "required": true
+          },
+          {
+            "name": "method",
+            "type": "select",
+            "label": "Method",
+            "required": true,
+            "validate": {
+              "enum": [
+                "get",
+                "head",
+                "post",
+                "put",
+                "patch",
+                "delete",
+                "options"
+              ]
+            }
+          },
+          {
+            "name": "headers",
+            "type": "array",
+            "label": "Headers",
+            "spec": {
+              "name": "value",
+              "label": "Header",
+              "type": "collection",
+              "spec": [
+                {
+                  "name": "name",
+                  "label": "Name",
+                  "type": "text",
+                  "required": true,
+                  "validate": {
+                    "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                  }
+                },
+                {
+                  "name": "value",
+                  "label": "Value",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          {
+            "name": "queryParameters",
+            "type": "array",
+            "label": "Query parameters",
+            "spec": {
+              "name": "value",
+              "label": "Parameter",
+              "type": "collection",
+              "spec": [
+                {
+                  "name": "name",
+                  "label": "Name",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "name": "value",
+                  "label": "Value",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          {
+            "name": "contentType",
+            "type": "select",
+            "label": "Body content type",
+            "validate": {
+              "enum": [
+                "json",
+                "multipart",
+                "urlEncoded",
+                "custom"
+              ]
+            }
+          },
+          {
+            "name": "parseResponse",
+            "type": "boolean",
+            "label": "Parse response",
+            "required": true
+          },
+          {
+            "name": "stopOnHttpError",
+            "type": "boolean",
+            "label": "Return error if HTTP request fails",
+            "required": true
+          },
+          {
+            "name": "timeout",
+            "type": "uinteger",
+            "label": "Timeout",
+            "validate": {
+              "min": 1,
+              "max": 300
+            }
+          },
+          {
+            "name": "allowRedirects",
+            "type": "boolean",
+            "label": "Allow redirects",
+            "required": true
+          },
+          {
+            "name": "shareCookies",
+            "type": "boolean",
+            "label": "Share cookies with other HTTP modules",
+            "required": true
+          },
+          {
+            "name": "requestCompressedContent",
+            "type": "boolean",
+            "label": "Request compressed content",
+            "required": true
+          },
+          {
+            "name": "inputMethod",
+            "type": "select",
+            "label": "Body input method",
+            "required": true,
+            "validate": {
+              "enum": [
+                "dataStructure",
+                "jsonString"
+              ]
+            }
+          },
+          {
+            "name": "jsonStringBodyContent",
+            "type": "text",
+            "label": "Body content",
+            "required": true
+          },
+          {
+            "name": "paginationType",
+            "type": "select",
+            "label": "Pagination type",
+            "validate": {
+              "enum": [
+                "offsetBased",
+                "pageBased",
+                "urlBased",
+                "tokenBased"
+              ]
+            }
+          }
+        ],
+        "interface": [
+          {
+            "name": "data",
+            "label": "Data",
+            "type": "any"
+          },
+          {
+            "name": "statusCode",
+            "label": "Status Code",
+            "type": "number"
+          },
+          {
+            "name": "headers",
+            "label": "Headers",
+            "type": "collection",
+            "spec": [
+              {
+                "name": "content-length",
+                "label": "Content-Length",
+                "type": "text"
+              },
+              {
+                "name": "content-encoding",
+                "label": "Content-Encoding",
+                "type": "text"
+              },
+              {
+                "name": "content-type",
+                "label": "Content-Type",
+                "type": "text"
+              },
+              {
+                "name": "server",
+                "label": "Server",
+                "type": "text"
+              },
+              {
+                "name": "cache-control",
+                "label": "Cache-Control",
+                "type": "text"
+              },
+              {
+                "name": "set-cookie",
+                "label": "Set-Cookie",
+                "type": "array",
+                "spec": {
+                  "type": "text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu2.make.com",
+    "notes": []
+  }
+}
