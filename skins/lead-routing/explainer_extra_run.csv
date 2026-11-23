@@ -1,0 +1,4 @@
+lead_id,company_name,domain,industry,employee_count,hq_city,hq_country,enquiry
+L-0002,Brightwater Analytics,brightwater-analytics.example,Computer Software,85,Sydney,Australia,Asking whether the pipeline can remove duplicate HubSpot companies by domain.
+L-0006,Harbourline Insurance,harbourline-insurance.example,Insurance,3100,London,United Kingdom,Our global sales operations team wants a demo covering EMEA and APAC next month.
+L-0011,Fjordline Shipping,fjordline-shipping.example,Transportation/Trucking/Railroad,950,Bergen,Norway,Please send pricing for an enterprise licence covering 120 users.

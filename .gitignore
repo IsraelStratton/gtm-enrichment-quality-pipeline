@@ -31,3 +31,8 @@ slice/n8n/*.local.json
 
 # Chapter 4: the Salesforce workflow filled in with the org's My Domain host, for import
 n8n/*.local.json
+
+# INIT-164: the local Agentforce project copy (holds the agent user) and the Salesforce CLI folders
+salesforce/agentforce.local/
+.sf/
+.sfdx/

@@ -1,0 +1,7 @@
+{
+  "name": "gtm-v2-agentforce-explainer",
+  "namespace": "",
+  "packageDirectories": [{ "path": "force-app", "default": true }],
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "66.0"
+}

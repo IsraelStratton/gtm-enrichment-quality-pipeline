@@ -1,0 +1,22 @@
+{
+  "_about": "INIT-164 (KB-138 C8) and KB-137 A5.3: Salesforce's list prices for Agentforce, for one comparison line on the cost sheet only. Not like for like: an Agentforce action is billed per action whatever its size, while a GTM v2 routing decision is billed by Claude tokens (pricing/claude_prices.json). The explainer in this build runs in a free Developer Edition org with no payment method, so it costs nothing here; these are what an employer on a paid org would pay. Re-read the sources before relying on a figure.",
+  "currency": "USD",
+  "flex_credits": {
+    "price_per_credit": 0.005,
+    "sold_as": "US$500 per 100,000 Flex Credits",
+    "credits_per_action": {
+      "standard_or_custom_action": 20,
+      "voice_action": 30,
+      "standard_or_custom_action_in_sandbox": 16
+    }
+  },
+  "price_per_action": 0.10,
+  "price_per_conversation": 2.00,
+  "read_on": "2026-11-24",
+  "sources": [
+    "https://www.salesforce.com/agentforce/pricing/",
+    "https://www.salesforce.com/en-us/wp-content/uploads/sites/4/assets/pdf/agentforce/Flex-Credits-Rate-Card-11.3.2026.pdf"
+  ],
+  "source_dates": "Rate card updated as of 3 November 2026; the pricing page is undated and says prices are subject to change",
+  "comparison_line": "One Agentforce action at list price (US$0.10) costs about 250 times one GTM v2 routing decision on Claude Haiku 5.5 (about US$0.0004, run log, 24/11/2026). Not like for like: different work, different billing unit, and this build's explainer runs free in a developer org."
+}
