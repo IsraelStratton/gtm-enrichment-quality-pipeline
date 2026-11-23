@@ -92,7 +92,7 @@ Then switch both Zaps off, unless the Pro trial follows straight away (KB-135, s
 
 Israel's yes, 23/11/2026. COURSES 2ND starts the trial and stops if Zapier shows a card field or offers 7 days instead of 14.
 
-**State, 23/11/2026, 15:36.** Trial on, with no card; it ends 07/12/2026. The Zap is a draft with steps 1 and 2. One sample lead has been fired for the trigger's test data. Zapier's help pages say the Professional trial lasts 14 days and needs no card. Started today, it ends about 07/12/2026, so the Pro Zap is recorded as a short clip inside the trial. What happens to a trial-built Zap afterwards has not been checked.
+**State, 23/11/2026, 16:00.** Trial on, with no card; it ends 07/12/2026. Zap published as version 1, tested with two leads and a wrong key, then switched off. Changes from the steps below, as built: the Code step's input is named `rawBody` (Zapier refused `raw_body`); the approval times out after 7 days; the Tables and Email step tests were skipped. 4 tasks a lead. Zapier's help pages say the Professional trial lasts 14 days and needs no card. Started today, it ends about 07/12/2026, so the Pro Zap is recorded as a short clip inside the trial. What happens to a trial-built Zap afterwards has not been checked.
 
 This version takes the same payload and key as n8n and Make. Zapier's AI writes a note for the owner, Israel approves the note, and only then are the row and the email written.
 
@@ -126,11 +126,11 @@ cd ~/gtm-enrichment-quality-pipeline && grep -q '^SLICE_KEY_ZAPIER=.' .env && ec
 pbcopy < /dev/null
 ```
 
-**3. Code by Zapier, Run JavaScript.** Input data: `raw_body` = the trigger's Raw Body. Code:
+**3. Code by Zapier, Run JavaScript.** Input data: `rawBody` = the trigger's Raw Body. Code:
 
 ```javascript
 // Read the approved lead and shape the tracking row (Zapier Pro slice).
-const lead = JSON.parse(inputData.raw_body);
+const lead = JSON.parse(inputData.rawBody);
 output = [{
   written_by: 'zapier-pro',
   run_id: lead.run_id,
@@ -169,7 +169,7 @@ Reviewer's reason: {reason}
 - Reviewer: the account owner, the only choice on Pro. Notify by email.
 - Title: `Approve the owner note for {company_name}`
 - Show the company, the route, the priority and `owner_note`. Let the reviewer edit `owner_note`.
-- Approve stops nothing; **decline stops the Zap**. Time-out after 24 hours.
+- Approve stops nothing; **decline stops the Zap**. Time-out after 7 days.
 
 **6. Zapier Tables, Create Record**, table `GTM v2 tracker (Zapier)`. Map the 13 fields from step 3. `written_by` is `zapier-pro`.
 

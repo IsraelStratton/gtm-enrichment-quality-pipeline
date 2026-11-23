@@ -9,15 +9,15 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | Plan | Community Edition, local | Free | Free | 14-day trial |
 | Entry point | Webhook | Custom webhook | Zapier Form (no webhooks on Free) | Webhook |
 | Design | One workflow | One scenario | Two Zaps joined through a Zapier Table; Email by Zapier; no outside login | One Zap with AI and approval steps |
-| Steps in the slice | 6 nodes | 5 modules | 2 Zaps of 2 steps each, plus a Form and a Table | |
-| Logins | 1: the general Google login, 3 permissions | 1: an HTTP OAuth 2.0 connection on a second client in the same Google app, same 3 permissions | None outside Zapier | |
+| Steps in the slice | 6 nodes | 5 modules | 2 Zaps of 2 steps each, plus a Form and a Table | 7 steps in one Zap |
+| Logins | 1: the general Google login, 3 permissions | 1: an HTTP OAuth 2.0 connection on a second client in the same Google app, same 3 permissions | None outside Zapier | None outside Zapier. The lead's made-up text goes to Zapier's AI provider |
 | Where the row goes | Shared Google Sheet | Shared Google Sheet | Zapier Table | Shared Google Sheet |
-| Plan limits met | None | None in the slice. Free allows 1,000 credits a month and 2 active scenarios | No webhooks; one action per Zap; Email by Zapier sends 5 emails a day; step tests email only the account's own address | |
-| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | Built-in API key (`x-make-apikey`); wrong or missing key gets 401 | No webhook. Entry is a Zapier Form, filled in by the approver | |
-| Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | Make's Google Sheets module needs full Drive access, so the slice uses the HTTP module with its own OAuth connection. Base64url is made with `base64()` and three `replace()` calls. Mappings must be pasted, not typed | A Form stands in for the webhook; a Table joins the two Zaps; the email is shorter, because the Table does not carry the enquiry and reason | |
-| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | 5 module runs; 5 credits | 1 task: the email step. Zapier did not charge for the Table step | |
-| Time from send to arrival | 0.03 to 0.5 s (local) | 1.1 to 1.2 s (Make's EU cloud) | About 4 s from form submission to the email in the inbox | |
-| How it was made | Workflow file written by the Code chat, imported by the planning chat | Built in Make's editor by the planning chat from the guide | Built in Zapier's editor by the planning chat from the guide | |
+| Plan limits met | None | None in the slice. Free allows 1,000 credits a month and 2 active scenarios | No webhooks; one action per Zap; Email by Zapier sends 5 emails a day; step tests email only the account's own address | Email by Zapier still sends 5 emails a day; approval requests go only to the account owner |
+| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | Built-in API key (`x-make-apikey`); wrong or missing key gets 401 | No webhook. Entry is a Zapier Form, filled in by the approver | A Filter on the `X-Slice-Key` header. Zapier answers 200 to every call; a wrong key ends as "Filtered", with 0 tasks and no email |
+| Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | Make's Google Sheets module needs full Drive access, so the slice uses the HTTP module with its own OAuth connection. Base64url is made with `base64()` and three `replace()` calls. Mappings must be pasted, not typed | A Form stands in for the webhook; a Table joins the two Zaps; the email is shorter, because the Table does not carry the enquiry and reason | Only the raw hook shows headers, so a Code step reads the body. The Code input had to be named `rawBody`. The row goes to the Zapier Table, so Zapier needs no Google login |
+| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | 5 module runs; 5 credits | 1 task: the email step. Zapier did not charge for the Table step | 4 tasks |
+| Time from send to arrival | 0.03 to 0.5 s (local) | 1.1 to 1.2 s (Make's EU cloud) | About 4 s from form submission to the email in the inbox | Set by the approver: the email follows within seconds of approval |
+| How it was made | Workflow file written by the Code chat, imported by the planning chat | Built in Make's editor by the planning chat from the guide | Built in Zapier's editor by the planning chat from the guide | Built in Zapier's editor by the planning chat from the guide |
 
 ## Setup log
 
@@ -32,6 +32,7 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | 23/11/2026, 14:22 | Make scenario built and switched on, with a second Google client `make` and the webhook key | Five modules; connection limited to the three Google API hosts |
 | 23/11/2026, 14:23 to 14:24 | Make test: three leads with the key, then no key and a wrong key | Pass. 3 rows with `written_by` = `make` and 3 emails to the `+gtm-slice` address. Both bad calls got 401 and wrote nothing. Make's client reached the sheet n8n's client made, so `drive.file` covers the whole Google app |
 | 23/11/2026, 15:09 | Zapier Free: Table, Form, Zap 1 and Zap 2 built; form submitted three times | Pass. 3 successful runs of each Zap; 3 Table records with `written_by` = `zapier` (plus one from Zap 1's step test); 3 emails from Email by Zapier to the `+gtm-slice` address, each with the right run ID. 3 of 100 tasks used. Both Zaps switched off afterwards. Changes from the guide: `route`, `priority` and `decision` are short text, and Zapier's Copilot could not map the fields, so they were mapped by hand |
+| 23/11/2026, 15:54 to 16:00 | Zapier Pro test: L-0001 and L-0002 with the key, then one wrong-key call | Pass. Both runs successful after approval; 2 owner emails, each carrying its approved AI note and the right run ID, to the `+gtm-slice` address. Wrong key: "Filtered", 0 tasks, no email. 4 tasks a lead. **The two approvals were pressed by the planning chat on Israel's word, after it read each note**, so this test proves the mechanism, not a person's review. The clip on 24/11/2026 shows Israel pressing Approve. Only one approval email arrived for the two requests: an open point, not a fault. The Table rows rest on the planning chat's report until Zapier MCP lets the Code chat read the Table. All three Zaps are off |
 | 23/11/2026, 15:35 | Zapier Pro trial started; Pro Zap drafted with steps 1 and 2 | No card asked. Trial ends 07/12/2026; 3 of 2,000 tasks used. One sample lead fired with the key at 15:36: HTTP 200, nothing run, since the Zap is a draft |
 | 23/11/2026, 15:34 | Commits re-stamped with the GitHub no-reply address and pushed | Seven commits; `scripts/prepush_check.py` now checks author and committer email, agent lines and private values before every push |
 | 23/11/2026, 15:30 | Zapier way 4: admin settings on paper | [zapier-admin-on-paper.md](zapier-admin-on-paper.md), from the Admin Essentials course (KB-124). Knowledge, not practice |
@@ -58,6 +59,7 @@ From the test runs on 23/11/2026.
 | n8n (local) | 1 execution | No limit | No limit | US$0 |
 | Make Free | 5 credits (5 operations) | 1,000 credits a month | 200 | US$0 |
 | Zapier Free | 1 task | 100 tasks a month, and 5 emails a day from Email by Zapier | 100, at most 5 a day | US$0 |
+| Zapier Pro trial | 4 tasks | 2,000 tasks during the trial, and still 5 emails a day | 500, at most 5 a day | US$0 for 14 days; the plan is paid after that |
 
 ## When to use which
 
@@ -68,7 +70,7 @@ Drawn from this build, not from vendor claims. The Zapier Pro line waits for its
 | **n8n** | You need control: exact permissions, code steps, data kept on your own machine, and workflows kept in git and tested | The only tool where the workflow is a file in the repo, checked by tests on every push. Fastest here, because it runs locally. Its ready-made Google steps ask for too much, so the narrow version needs HTTP requests and a Code node |
 | **Make** | A business team wants visual building in the cloud, with room to grow on a free plan | 200 leads a month on Free, against Zapier Free's 100. A key check is built into the webhook. HTTP OAuth keeps the Google reach as narrow as n8n's. Costs: mappings have to be pasted, its Google modules ask for full Drive, and the export holds IDs that must be removed |
 | **Zapier Free** | A small app-to-app job that a non-engineer builds and keeps running | No webhooks and one action per Zap, so the job is split into two Zaps joined by a Table. Its Form, Table and email stay inside Zapier, so no outside login is needed. Email by Zapier caps it at 5 emails a day |
-| **Zapier Pro** | The same people need AI and a person's approval inside the flow | Pending: way 2 test |
+| **Zapier Pro** | The same people need AI and a person's approval inside the flow | Zapier's AI step and approval step are built in, and work without writing code. Costs: 4 tasks a lead, and only the account owner can approve on Pro. A wrong key is filtered inside the Zap, not refused at the door |
 
 **Say it in one line.** "n8n when you need control and tests, Make when a team wants visual building with room to grow, Zapier when the job is short and the builder is not an engineer."
 
@@ -95,6 +97,17 @@ Drawn from this build, not from vendor claims. The Zapier Pro line waits for its
 **Why it is built this way.** The Table joins two one-action Zaps into one flow. Nothing leaves Zapier, so no outside login is needed.
 
 **Say it in one line.** "On Zapier's free plan I split the job into two Zaps joined by a table, and it needs no access to anyone's mail or files."
+
+### Zapier (Pro trial)
+
+1. The same approved lead and key arrive at a Zapier webhook. A Filter lets the run go on only if the key matches.
+2. A Code step reads the lead, and Zapier's AI writes a two-line note for the owner. The prompt treats the customer's words as data, never as instructions.
+3. The run then waits for a person. They read the note, can change it, and approve. Declining stops the run.
+4. Only then is the row added to the Zapier Table and the owner emailed, with the approved note.
+
+**Why it is built this way.** An AI's words reach staff only after a person has read them. The row goes to Zapier's own Table, so Zapier needs no access to Google.
+
+**Say it in one line.** "On Zapier's paid plan the same job runs in one Zap, and a person approves what the AI wrote before anyone sees it."
 
 ### Make
 
