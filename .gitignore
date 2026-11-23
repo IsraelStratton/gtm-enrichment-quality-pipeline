@@ -22,3 +22,6 @@ n8n/*.raw.json
 
 # Local agent settings
 .claude/
+
+# Filled-in n8n imports hold the tracker and credential IDs
+slice/n8n/*.local.json

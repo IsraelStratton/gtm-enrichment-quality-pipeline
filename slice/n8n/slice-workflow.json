@@ -1,0 +1,180 @@
+{
+  "name": "GTM v2 slice: approved lead (n8n)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gtm-v2-approved-lead",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e01",
+      "name": "Approved lead in",
+      "webhookId": "9b7e4d2c-6a1f-4e8b-b3c5-2d4f6a8b0c11"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"written_by\": \"n8n\",\n  \"run_id\": {{ JSON.stringify($json.body.run_id) }},\n  \"lead_id\": {{ JSON.stringify($json.body.lead_id) }},\n  \"company_name\": {{ JSON.stringify($json.body.company_name) }},\n  \"domain\": {{ JSON.stringify($json.body.domain) }},\n  \"route\": {{ JSON.stringify($json.body.route) }},\n  \"priority\": {{ JSON.stringify($json.body.priority) }},\n  \"owner_team\": {{ JSON.stringify($json.body.owner_team) }},\n  \"decision\": {{ JSON.stringify($json.body.decision) }},\n  \"approved_by\": {{ JSON.stringify($json.body.approved_by) }},\n  \"approved_at\": {{ JSON.stringify($json.body.approved_at) }},\n  \"sent_at\": {{ JSON.stringify($json.body.sent_at) }},\n  \"received_at\": {{ JSON.stringify($now.toUTC().toISO()) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e02",
+      "name": "Shape tracking row"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/rows!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ values: [[ $json.written_by, $json.run_id, $json.lead_id, $json.company_name, $json.domain, $json.route, $json.priority, $json.owner_team, $json.decision, $json.approved_by, $json.approved_at, $json.sent_at, $json.received_at ]] }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        -120
+      ],
+      "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e03",
+      "name": "Add tracking row",
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "GOOGLE_CREDENTIAL_ID",
+          "name": "Google least reach gtm-pipeline"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/oauth2/v3/userinfo",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        120
+      ],
+      "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e04",
+      "name": "Get owner inbox",
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "GOOGLE_CREDENTIAL_ID",
+          "name": "Google least reach gtm-pipeline"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Build owner email (n8n slice, chapter 3).\n// The recipient is read at run time from the connected Google account, so no\n// address sits in this workflow or its export, and no payload can change it.\nconst inbox = $input.item.json.email;\nif (!inbox || !inbox.includes('@')) {\n  throw new Error('Google returned no email address. Check the Google credential.');\n}\nconst at = inbox.lastIndexOf('@');\nconst to = `${inbox.slice(0, at)}+gtm-slice${inbox.slice(at)}`;\n\nconst row = $('Shape tracking row').item.json;\nconst lead = $('Approved lead in').item.json.body;\n\n// Base64url without Buffer or btoa, so it runs in any n8n Code sandbox.\nfunction base64Url(str) {\n  const bytes = unescape(encodeURIComponent(str));\n  const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';\n  let out = '';\n  for (let i = 0; i < bytes.length; i += 3) {\n    const n = (bytes.charCodeAt(i) << 16) | ((bytes.charCodeAt(i + 1) || 0) << 8) | (bytes.charCodeAt(i + 2) || 0);\n    out += abc[(n >> 18) & 63] + abc[(n >> 12) & 63];\n    if (i + 1 < bytes.length) out += abc[(n >> 6) & 63];\n    if (i + 2 < bytes.length) out += abc[n & 63];\n  }\n  return out;\n}\n\n// Plain ASCII headers go as they are; anything else is RFC 2047 encoded.\nfunction header(value) {\n  if (/^[\\x20-\\x7E]*$/.test(value)) return value;\n  let b64 = base64Url(value).replace(/-/g, '+').replace(/_/g, '/');\n  while (b64.length % 4) b64 += '=';\n  return `=?UTF-8?B?${b64}?=`;\n}\n\nconst subject = `Approved lead for ${row.owner_team}: ${row.company_name} (${row.priority})`;\nconst text = [\n  `${row.company_name} (${row.domain}) is approved for ${row.owner_team}.`,\n  '',\n  `Route: ${row.route}`,\n  `Priority: ${row.priority}`,\n  `Industry: ${lead.industry}`,\n  `Enquiry: ${lead.enquiry}`,\n  `Reason: ${lead.reason}`,\n  `Decision: ${row.decision} by ${row.approved_by} at ${row.approved_at}`,\n  '',\n  `Run: ${row.run_id}`,\n  'Sent by the n8n slice. Made-up demo data.',\n].join('\\r\\n');\n\nconst mime = [\n  `To: ${to}`,\n  `Subject: ${header(subject)}`,\n  'MIME-Version: 1.0',\n  'Content-Type: text/plain; charset=\"UTF-8\"',\n  'Content-Transfer-Encoding: 8bit',\n  '',\n  text,\n].join('\\r\\n');\n\nreturn { json: { raw: base64Url(mime), subject } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        120
+      ],
+      "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e05",
+      "name": "Build owner email"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ raw: $json.raw }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        120
+      ],
+      "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e06",
+      "name": "Send owner email",
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "GOOGLE_CREDENTIAL_ID",
+          "name": "Google least reach gtm-pipeline"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Approved lead in": {
+      "main": [
+        [
+          {
+            "node": "Shape tracking row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape tracking row": {
+      "main": [
+        [
+          {
+            "node": "Add tracking row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get owner inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get owner inbox": {
+      "main": [
+        [
+          {
+            "node": "Build owner email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build owner email": {
+      "main": [
+        [
+          {
+            "node": "Send owner email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

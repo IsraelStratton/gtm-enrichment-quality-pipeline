@@ -1,0 +1,56 @@
+{
+  "_about": "Made-up, company-level approved leads for the chapter 3 slice. No people, no contact details. Domains use the reserved .example TLD.",
+  "leads": [
+    {
+      "lead_id": "L-0001",
+      "company_name": "Northwind Freight",
+      "domain": "northwind-freight.example",
+      "industry": "Transportation/Trucking/Railroad",
+      "employee_count": 420,
+      "hq_country": "Australia",
+      "enquiry": "Wants a demo of lead routing for their new regional sales team before 1 February.",
+      "intent": "demo_request",
+      "priority": "high",
+      "route": "enterprise_anz",
+      "owner_team": "Enterprise sales ANZ",
+      "reason": "Large freight firm asking for a dated demo. Size and region fit the enterprise ANZ team.",
+      "decision": "approved",
+      "approved_by": "reviewer-01",
+      "approved_at": "2026-11-23T01:05:00Z"
+    },
+    {
+      "lead_id": "L-0002",
+      "company_name": "Brightwater Analytics",
+      "domain": "brightwater-analytics.example",
+      "industry": "Computer Software",
+      "employee_count": 85,
+      "hq_country": "Australia",
+      "enquiry": "Asking whether the pipeline can remove duplicate HubSpot companies by domain.",
+      "intent": "product_question",
+      "priority": "medium",
+      "route": "mid_market",
+      "owner_team": "Mid-market sales",
+      "reason": "A product question from a mid-sized software firm. The reviewer moved it from support to sales.",
+      "decision": "changed",
+      "approved_by": "reviewer-01",
+      "approved_at": "2026-11-23T01:07:00Z"
+    },
+    {
+      "lead_id": "L-0003",
+      "company_name": "Copperleaf Energy",
+      "domain": "copperleaf-energy.example",
+      "industry": "Renewables & Environment",
+      "employee_count": 1250,
+      "hq_country": "Australia",
+      "enquiry": "Procurement wants pricing for 40 seats and a security pack.",
+      "intent": "pricing_request",
+      "priority": "high",
+      "route": "enterprise_anz",
+      "owner_team": "Enterprise sales ANZ",
+      "reason": "A pricing request with a seat count from a large firm. Clear buying signal.",
+      "decision": "approved",
+      "approved_by": "reviewer-02",
+      "approved_at": "2026-11-23T01:09:00Z"
+    }
+  ]
+}
