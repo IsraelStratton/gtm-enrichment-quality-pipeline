@@ -59,7 +59,16 @@ From the test runs on 23/11/2026.
 
 ## When to use which
 
-Written at the end of the chapter, from the comparison and the limits above.
+Drawn from this build, not from vendor claims. The Zapier Pro line waits for its test.
+
+| Use | When | What this build showed |
+|---|---|---|
+| **n8n** | You need control: exact permissions, code steps, data kept on your own machine, and workflows kept in git and tested | The only tool where the workflow is a file in the repo, checked by tests on every push. Fastest here, because it runs locally. Its ready-made Google steps ask for too much, so the narrow version needs HTTP requests and a Code node |
+| **Make** | A business team wants visual building in the cloud, with room to grow on a free plan | 200 leads a month on Free, against Zapier Free's 100. A key check is built into the webhook. HTTP OAuth keeps the Google reach as narrow as n8n's. Costs: mappings have to be pasted, its Google modules ask for full Drive, and the export holds IDs that must be removed |
+| **Zapier Free** | A small app-to-app job that a non-engineer builds and keeps running | No webhooks and one action per Zap, so the job is split into two Zaps joined by a Table. Its Form, Table and email stay inside Zapier, so no outside login is needed. Email by Zapier caps it at 5 emails a day |
+| **Zapier Pro** | The same people need AI and a person's approval inside the flow | Pending: way 2 test |
+
+**Say it in one line.** "n8n when you need control and tests, Make when a team wants visual building with room to grow, Zapier when the job is short and the builder is not an engineer."
 
 ## How it works
 
