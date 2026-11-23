@@ -25,3 +25,6 @@ n8n/*.raw.json
 
 # Filled-in n8n imports hold the tracker and credential IDs
 slice/n8n/*.local.json
+
+# Private values the pre-push check looks for (tool IDs); never committed
+.prepush-private.local
