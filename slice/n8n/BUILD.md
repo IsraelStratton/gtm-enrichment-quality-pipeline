@@ -4,12 +4,12 @@ Who does what (Israel's ruling, 23/11/2026, 12:39): Claude does every step it ca
 
 | Part | What | State |
 |---|---|---|
-| A | Google app `n8n local gtm-pipeline` in project `gtm-pipeline-v2` | Made 23/11/2026. Still in Testing until the Branding links are added (Part F) |
-| B | n8n credential `Google least reach gtm-pipeline` | Connected 23/11/2026, 12:54 |
+| A | Google app `n8n local gtm-pipeline` in project `gtm-pipeline-v2` | Made 23/11/2026. Published to production (unverified) at 13:30, after Part F |
+| B | n8n credential `Google least reach gtm-pipeline` | Connected 23/11/2026, 12:54; reconnected under production at 13:30 |
 | C | Tracker sheet, made by the run-once workflow | Made 23/11/2026, 12:58. **Do not run that workflow again: each run makes another sheet** |
-| D | Slice workflow, imported from [slice-workflow.json](slice-workflow.json) | To do |
-| E | Test: three leads, three rows, three emails | To do |
-| F | Publish the Google app, then reconnect | To do, after PRIVACY.md is on GitHub |
+| D | Slice workflow, imported from [slice-workflow.json](slice-workflow.json) | Imported and published 23/11/2026; matches the file node for node |
+| E | Test: three leads, three rows, three emails | Passed 23/11/2026, 13:15 |
+| F | Publish the Google app, then reconnect | Done 23/11/2026, 13:30. Proof run at 13:34 passed |
 
 The slice uses n8n's general **Google OAuth2 API** login with three narrow permissions, and HTTP Request nodes. It does not use n8n's Gmail or Google Sheets nodes, because their logins ask for full mailbox access and every spreadsheet ([control sheet](../../docs/v2/control-sheet.md)).
 
@@ -43,10 +43,11 @@ The slice uses n8n's general **Google OAuth2 API** login with three narrow permi
 7. If the credential shows **Allowed HTTP Request Domains**, choose specific domains and enter `sheets.googleapis.com,gmail.googleapis.com,www.googleapis.com`.
 8. Rename the credential to `Google least reach gtm-pipeline`.
 9. **Sign in with Google**. Pick the account. On "Google hasn't verified this app", choose **Advanced**, then **Go to n8n local gtm-pipeline**.
-10. **Stop and check the consent screen.** It must list exactly these three, and nothing else:
+10. **Stop and check the consent screen.** It must list these three, plus Google's own sign-in line, and nothing else:
     - Send email on your behalf.
     - See, edit, create and delete only the specific Google Drive files you use with this app.
     - See your primary Google Account email address.
+    - Associate you with your personal info on Google. Google adds this `openid` line itself, because the app asks for the email address.
 
     If it lists anything else, stop and tell Claude. If it matches, tick all three and **Continue**.
 11. n8n shows "Account connected". **Save**. Tell Claude the date you connected: it starts the day-8 test.
@@ -111,7 +112,7 @@ cd ~/gtm-enrichment-quality-pipeline && .venv/bin/python scripts/render_n8n_slic
 ```
 
 1. In n8n, start a new workflow. In its menu choose **Import from File** and pick `~/gtm-enrichment-quality-pipeline/slice/n8n/slice-workflow.local.json`.
-2. Check the four HTTP Request nodes. Each must show the credential `Google least reach gtm-pipeline`, with no warning.
+2. Check the three HTTP Request nodes. Each must show the credential `Google least reach gtm-pipeline`, with no warning.
 3. **Save**, then **Publish**. The webhook only runs when it is called, so nothing is scheduled.
 4. Tell Israel "published". He tells the Code chat.
 

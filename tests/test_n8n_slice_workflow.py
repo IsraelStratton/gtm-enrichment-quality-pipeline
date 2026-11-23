@@ -39,20 +39,24 @@ def test_template_has_only_importable_keys_and_six_named_nodes():
     assert TEMPLATE["settings"]["executionOrder"] == "v1"
 
 
-def test_webhook_matches_the_fire_script():
-    p = NODES["Approved lead in"]["parameters"]
-    assert NODES["Approved lead in"]["type"] == "n8n-nodes-base.webhook"
+def test_webhook_matches_the_fire_script_and_requires_the_key():
+    hook = NODES["Approved lead in"]
+    p = hook["parameters"]
+    assert hook["type"] == "n8n-nodes-base.webhook"
     assert p["path"] == fire_slice.N8N_PATH
     assert p["httpMethod"] == "POST"
     assert p["responseMode"] == "onReceived"
-    assert NODES["Approved lead in"].get("webhookId")
+    assert hook.get("webhookId")
+    assert p["authentication"] == "headerAuth"
+    assert hook["credentials"] == {"httpHeaderAuth": {"id": "SLICE_KEY_CREDENTIAL_ID", "name": "Slice webhook key (n8n)"}}
 
 
 def test_only_the_general_google_login_and_three_google_hosts():
     for node in TEMPLATE["nodes"]:
         assert node["type"] not in {"n8n-nodes-base.gmail", "n8n-nodes-base.googleSheets"}
+        allowed = {"httpHeaderAuth"} if node["name"] == "Approved lead in" else {"googleOAuth2Api"}
         for cred_type in node.get("credentials") or {}:
-            assert cred_type == "googleOAuth2Api", node["name"]
+            assert cred_type in allowed, node["name"]
         if node["type"] == "n8n-nodes-base.httpRequest":
             p = node["parameters"]
             assert p["authentication"] == "predefinedCredentialType"
@@ -138,19 +142,62 @@ def test_owner_email_encodes_non_ascii_subjects():
     assert "Café Müller Logistik (x) is approved" in mime
 
 
-def test_render_fills_both_placeholders_without_touching_the_template():
+IDS = {"GOOGLE_CREDENTIAL_ID": "CRED123", "SLICE_KEY_CREDENTIAL_ID": "KEY456"}
+
+
+def test_render_fills_every_placeholder_without_touching_the_template():
     before = json.dumps(TEMPLATE)
-    wf = rn.render(TEMPLATE, "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd", "CRED123")
+    wf = rn.render(TEMPLATE, "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd", IDS)
     text = json.dumps(wf)
-    assert rn.SHEET_PLACEHOLDER not in text and rn.CRED_PLACEHOLDER not in text
+    assert rn.SHEET_PLACEHOLDER not in text
+    assert not any(ph in text for ph in rn.CREDENTIALS)
+    assert '"id": "KEY456"' in text and '"id": "CRED123"' in text
     assert "/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd/values/" in text
     assert json.dumps(TEMPLATE) == before
 
 
-@pytest.mark.parametrize("tracker,cred", [("", "CRED123"), ("short", "CRED123"), ("1AbCdEfGhIjKlMnOpQrStUvWxYz", "")])
-def test_render_refuses_missing_values(tracker, cred):
+@pytest.mark.parametrize("tracker,ids", [
+    ("", IDS),
+    ("short", IDS),
+    ("1AbCdEfGhIjKlMnOpQrStUvWxYz", {"GOOGLE_CREDENTIAL_ID": "CRED123"}),
+    ("1AbCdEfGhIjKlMnOpQrStUvWxYz", {"GOOGLE_CREDENTIAL_ID": "", "SLICE_KEY_CREDENTIAL_ID": "KEY456"}),
+])
+def test_render_refuses_missing_values(tracker, ids):
     with pytest.raises(rn.ConfigError):
-        rn.render(TEMPLATE, tracker, cred)
+        rn.render(TEMPLATE, tracker, ids)
+
+
+def test_update_live_replaces_by_name_then_publishes():
+    calls = []
+
+    class R:
+        def __init__(self, data=None):
+            self._data = data or {}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._data
+
+    class S:
+        def get(self, url, **kw):
+            calls.append(("GET", url, kw.get("params")))
+            return R({"data": [{"id": "WF1", "name": TEMPLATE["name"]}]})
+
+        def put(self, url, **kw):
+            calls.append(("PUT", url, sorted(kw["json"])))
+            return R()
+
+        def post(self, url, **kw):
+            calls.append(("POST", url, None))
+            return R()
+
+    wf = rn.render(TEMPLATE, "1AbCdEfGhIjKlMnOpQrStUvWxYz", IDS)
+    assert rn.update_live("http://localhost:5678", "k", wf, session=S()) == "WF1"
+    assert [c[0] for c in calls] == ["GET", "PUT", "POST"]
+    assert calls[1] == ("PUT", "http://localhost:5678/api/v1/workflows/WF1", ["connections", "name", "nodes", "settings"])
+    assert calls[2][1].endswith("/workflows/WF1/activate")
 
 
 def test_find_credential_id_needs_exactly_one_match():

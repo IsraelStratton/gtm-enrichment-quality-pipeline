@@ -89,9 +89,35 @@ def test_mask_url_hides_remote_tokens_but_not_localhost():
     assert fs.mask_url(local) == local
 
 
+def test_key_headers_per_target_and_never_for_no_key():
+    env = {"SLICE_KEY_N8N": "k-n8n-123456", "SLICE_KEY_MAKE": "k-make-123456"}
+    assert fs.key_headers("n8n", env) == {"X-Slice-Key": "k-n8n-123456"}
+    assert fs.key_headers("make", env) == {"x-make-apikey": "k-make-123456"}
+    assert fs.key_headers("zapier", env) == {}
+    assert fs.key_headers("n8n", env, use_key=False) == {}
+    assert fs.key_headers("n8n", {}) == {}
+
+
+def test_main_sends_the_key_but_never_prints_it(capsys, monkeypatch):
+    monkeypatch.setenv("SLICE_KEY_N8N", "secret-key-value-999")
+    seen = {}
+
+    def post(url, json, headers, timeout):
+        seen.update(headers)
+        return FakeResponse(200, "{}")
+
+    assert fs.main(["--target", "n8n", "--test"], post=post) == 0
+    out = capsys.readouterr().out
+    assert seen == {"X-Slice-Key": "secret-key-value-999"}
+    assert "secret-key-value-999" not in out and "with key in header X-Slice-Key" in out
+    seen.clear()
+    assert fs.main(["--target", "n8n", "--test", "--no-key"], post=post) == 0
+    assert seen == {} and "without a key" in capsys.readouterr().out
+
+
 def test_main_pass_and_fail_exit_codes(capsys):
-    ok = lambda url, json, timeout: FakeResponse(200, '{"message":"Workflow was started"}')  # noqa: E731
-    bad = lambda url, json, timeout: FakeResponse(404, "not registered")  # noqa: E731
+    ok = lambda url, json, headers, timeout: FakeResponse(200, '{"message":"Workflow was started"}')  # noqa: E731
+    bad = lambda url, json, headers, timeout: FakeResponse(404, "not registered")  # noqa: E731
     assert fs.main(["--target", "n8n", "--test"], post=ok) == 0
     assert "PASS HTTP 200" in capsys.readouterr().out
     assert fs.main(["--target", "n8n", "--test"], post=bad) == 1

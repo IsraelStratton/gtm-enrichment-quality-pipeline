@@ -11,9 +11,9 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | Steps in the slice | 6 nodes | | | |
 | Logins | 1: the general Google login, 3 permissions | | | |
 | Where the row goes | Shared Google Sheet | Shared Google Sheet | Zapier Table | Shared Google Sheet |
-| Plan limits met | None for the slice itself | | | |
+| Plan limits met | None | | | |
 | Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | | | |
-| Units per lead | 1 execution, no plan limit | | | |
+| Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | | | |
 | How it was made | Workflow file written by the Code chat, imported by the planning chat | | | |
 
 ## Setup log
@@ -22,9 +22,10 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 |---|---|---|
 | 23/11/2026, 12:54 | Google app made; n8n Google login connected | Connected. App still in Testing: Google will not publish it without a home page and a privacy policy link |
 | 23/11/2026, 12:58 | Tracker sheet made by the run-once n8n workflow | Private sheet, tab `rows`, 13 headings. Checked through the Drive connector |
-| | n8n slice workflow imported and published | |
-| | n8n test: three leads | |
-| | Google app published; n8n login reconnected | |
+| 23/11/2026, by 13:14 | n8n slice workflow imported and published | Live workflow matches the file node for node, with the same wiring |
+| 23/11/2026, 13:14 to 13:15 | n8n test: three leads at the live address | Pass. 3 runs, every step green; 3 rows with `written_by` = `n8n`; 3 emails to the `+gtm-slice` address. Each lead reached n8n 53 to 480 ms after it was sent; each run took 1.9 to 3.8 s |
+| 23/11/2026, 13:30 | Google app published to production, unverified; n8n login reconnected | Consent screen: the three permissions asked for, plus Google's own `openid` sign-in line |
+| 23/11/2026, 13:34 | Proof run with the new login | Pass: every step green, row 5 in the tracker, email arrived |
 
 ## Limits met
 
@@ -43,7 +44,7 @@ To be filled from real runs.
 
 | Tool | Units used by one lead | Free allowance | Leads a month on the free plan | Money |
 |---|---|---|---|---|
-| n8n (local) | | No limit | | US$0 |
+| n8n (local) | 1 execution | No limit | No limit | US$0 |
 | Make Free | | 1,000 credits a month | | US$0 |
 | Zapier Free | | 100 tasks a month | | US$0 |
 
@@ -69,8 +70,8 @@ Written at the end of the chapter, from the comparison and the limits above.
 
 The Google app goes to production but stays unverified. Google's pages do not say whether such logins escape the 7-day limit, so it is tested.
 
-- Reconnected under "In production" on: (date)
-- Test on or after: 8 days later
+- Reconnected under "In production" on: 23/11/2026, 13:30
+- Test on or after: 01/12/2026
 - Test: fire the n8n slice with no reconnect. Pass if the row and the email both arrive.
 - Result: (pending)
 - If it fails: reconnect weekly, and keep the check below.

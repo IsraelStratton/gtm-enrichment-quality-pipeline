@@ -8,13 +8,14 @@ Only the owner of this repository. The app connects the owner's own n8n, running
 
 ## What it can reach in Google
 
-The app asks for three permissions, and no others:
+The app asks for three permissions. Because one of them is the email address, Google also adds its standard sign-in permission, `openid`, shown as "Associate you with your personal info on Google". Nothing else is granted.
 
 | Permission | What the app does with it |
 |---|---|
 | Send email on your behalf (`gmail.send`) | Sends one short email per demo lead to the owner's own inbox. It cannot read, change or delete any mail |
 | Only the Drive files this app creates (`drive.file`) | Creates one tracking spreadsheet and adds rows to it. It cannot see any other file |
 | Your primary email address (`userinfo.email`) | Reads the signed-in account's address at run time, so the email goes to the owner's own inbox and no address is stored in the workflow |
+| Sign-in (`openid`), added by Google | Links the login to the Google account. The app uses nothing from it beyond the email address above |
 
 ## What data it handles
 

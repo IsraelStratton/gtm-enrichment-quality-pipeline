@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "gtm-v2-approved-lead",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       },
@@ -16,7 +17,13 @@
       ],
       "id": "5f0c2a8e-1b7d-4c6a-9e3f-0a1b2c3d4e01",
       "name": "Approved lead in",
-      "webhookId": "9b7e4d2c-6a1f-4e8b-b3c5-2d4f6a8b0c11"
+      "webhookId": "9b7e4d2c-6a1f-4e8b-b3c5-2d4f6a8b0c11",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SLICE_KEY_CREDENTIAL_ID",
+          "name": "Slice webhook key (n8n)"
+        }
+      }
     },
     {
       "parameters": {

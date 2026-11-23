@@ -11,7 +11,11 @@ adds its own received_at when it writes the tracking row.
   python scripts/fire_slice.py --target n8n --dry-run      # print the payload, send nothing
 
 Webhook URLs for Make and Zapier come from .env (SLICE_URL_MAKE, SLICE_URL_ZAPIER)
-or --url. They act as keys, so they are masked in the output and never committed.
+or --url. They are masked in the output and never committed.
+
+Each webhook needs a key. The script sends it from .env (SLICE_KEY_N8N in the
+X-Slice-Key header, SLICE_KEY_MAKE in Make's x-make-apikey header) and never
+prints it. --no-key sends without one, to prove the webhook refuses the call.
 
 Exit codes: 0 sent and accepted, 1 HTTP or network failure, 2 configuration error.
 """
@@ -36,6 +40,8 @@ ENV_URL = {"n8n": "SLICE_URL_N8N", "make": "SLICE_URL_MAKE", "zapier": "SLICE_UR
 N8N_DEFAULT_BASE = "http://localhost:5678"
 N8N_PATH = "gtm-v2-approved-lead"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+KEY_ENV = {"n8n": "SLICE_KEY_N8N", "make": "SLICE_KEY_MAKE"}
+KEY_HEADER = {"n8n": "X-Slice-Key", "make": "x-make-apikey"}
 
 
 class ConfigError(Exception):
@@ -84,6 +90,14 @@ def resolve_url(target: str, cli_url: str | None, env: dict, test: bool) -> str:
     return url
 
 
+def key_headers(target: str, env: dict, use_key: bool = True) -> dict:
+    """The webhook key header for a target, or {} if it has none or --no-key is set."""
+    name = KEY_ENV.get(target)
+    if not use_key or not name or not env.get(name):
+        return {}
+    return {KEY_HEADER[target]: env[name]}
+
+
 def mask_url(url: str) -> str:
     """Show enough to tell targets apart, never the whole token-bearing path."""
     parts = urlsplit(url)
@@ -93,9 +107,9 @@ def mask_url(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}/...{tail}"
 
 
-def send(url: str, payload: dict, post=requests.post) -> tuple[int, float, str]:
+def send(url: str, payload: dict, headers: dict | None = None, post=requests.post) -> tuple[int, float, str]:
     started = time.perf_counter()
-    resp = post(url, json=payload, timeout=30)
+    resp = post(url, json=payload, headers=headers or {}, timeout=30)
     elapsed_ms = (time.perf_counter() - started) * 1000
     return resp.status_code, elapsed_ms, (resp.text or "")[:300]
 
@@ -107,6 +121,7 @@ def main(argv: list[str] | None = None, post=requests.post) -> int:
     ap.add_argument("--url", help="override the webhook URL")
     ap.add_argument("--test", action="store_true", help="n8n only: use the editor's test URL")
     ap.add_argument("--dry-run", action="store_true", help="print the payload and stop")
+    ap.add_argument("--no-key", action="store_true", help="send without the webhook key (expect a refusal)")
     args = ap.parse_args(argv)
 
     load_dotenv(REPO / ".env")
@@ -116,15 +131,23 @@ def main(argv: list[str] | None = None, post=requests.post) -> int:
         if args.dry_run:
             print(json.dumps(payload, indent=2))
             return 0
-        url = resolve_url(args.target, args.url, dict(os.environ), args.test)
+        env = dict(os.environ)
+        url = resolve_url(args.target, args.url, env, args.test)
+        headers = key_headers(args.target, env, use_key=not args.no_key)
     except (ConfigError, OSError, KeyError, ValueError) as e:
         print(f"CONFIG ERROR {e}")
         return 2
 
     print(f"Sending {payload['lead_id']} ({payload['company_name']}) to {args.target} at {mask_url(url)}")
     print(f"run_id {payload['run_id']}  sent_at {payload['sent_at']}")
+    if headers:
+        print(f"with key in header {next(iter(headers))}")
+    elif args.target in KEY_ENV and not args.no_key:
+        print(f"WARNING no key: {KEY_ENV[args.target]} is not set in .env")
+    else:
+        print("without a key")
     try:
-        status, elapsed_ms, body = send(url, payload, post=post)
+        status, elapsed_ms, body = send(url, payload, headers=headers, post=post)
     except requests.RequestException as e:
         print(f"FAIL network error: {type(e).__name__}")
         return 1
