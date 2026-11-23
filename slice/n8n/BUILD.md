@@ -10,6 +10,7 @@ Who does what (Israel's ruling, 23/11/2026, 12:39): Claude does every step it ca
 | D | Slice workflow, imported from [slice-workflow.json](slice-workflow.json) | Imported and published 23/11/2026; matches the file node for node |
 | E | Test: three leads, three rows, three emails | Passed 23/11/2026, 13:15 |
 | F | Publish the Google app, then reconnect | Done 23/11/2026, 13:30. Proof run at 13:34 passed |
+| K | Webhook requires the `X-Slice-Key` header | Live 23/11/2026, 13:51. Missing or wrong key gets 403 ([Make guide, Part K](../make/BUILD.md)) |
 
 The slice uses n8n's general **Google OAuth2 API** login with three narrow permissions, and HTTP Request nodes. It does not use n8n's Gmail or Google Sheets nodes, because their logins ask for full mailbox access and every spreadsheet ([control sheet](../../docs/v2/control-sheet.md)).
 

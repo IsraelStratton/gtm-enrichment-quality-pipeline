@@ -19,7 +19,7 @@ Rule: ask for the narrowest permissions that work. When a tool's built-in login 
 
 | Entry point | Who can call it | Guard today | Open point |
 |---|---|---|---|
-| n8n webhook `POST /webhook/gtm-v2-approved-lead` | Anything that can reach port 5678. Docker publishes it on every network interface, so other devices on the same network can reach it | None yet. The worst case is a made-up row and an email to the owner's own inbox | Decided 23/11/2026: require the `X-Slice-Key` header (n8n Header Auth). Live once the key is made |
+| n8n webhook `POST /webhook/gtm-v2-approved-lead` | Anything that can reach port 5678. Docker publishes it on every network interface, so other devices on the same network can reach it | Requires the `X-Slice-Key` header (n8n Header Auth credential "Slice webhook key (n8n)"; the key lives in that credential and `.env`). Live 23/11/2026, 13:51 | Proved: no key and a wrong key both get HTTP 403 and start no run; the right key gets 200 |
 | Make webhook `gtm-v2-approved-lead` | Anyone holding its address | Make's built-in API key check (`x-make-apikey`) | Built in Part M of the Make guide |
 
 ## Logins considered and not used

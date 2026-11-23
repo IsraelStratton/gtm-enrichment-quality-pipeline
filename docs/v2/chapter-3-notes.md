@@ -12,6 +12,7 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | Logins | 1: the general Google login, 3 permissions | | | |
 | Where the row goes | Shared Google Sheet | Shared Google Sheet | Zapier Table | Shared Google Sheet |
 | Plan limits met | None | | | |
+| Webhook guard | `X-Slice-Key` header (Header Auth); wrong or missing key gets 403 | | | |
 | Workarounds | The built-in Gmail and Sheets logins ask for full mailbox access and every spreadsheet, so the slice uses HTTP requests to the Google APIs and one Code node | | | |
 | Units per lead | 1 execution: 6 steps, 3 Google API calls. No plan limit | | | |
 | How it was made | Workflow file written by the Code chat, imported by the planning chat | | | |
@@ -26,6 +27,7 @@ The same job in three tools: an approved lead arrives, the owner is told by emai
 | 23/11/2026, 13:14 to 13:15 | n8n test: three leads at the live address | Pass. 3 runs, every step green; 3 rows with `written_by` = `n8n`; 3 emails to the `+gtm-slice` address. Each lead reached n8n 53 to 480 ms after it was sent; each run took 1.9 to 3.8 s |
 | 23/11/2026, 13:30 | Google app published to production, unverified; n8n login reconnected | Consent screen: the three permissions asked for, plus Google's own `openid` sign-in line |
 | 23/11/2026, 13:34 | Proof run with the new login | Pass: every step green, row 5 in the tracker, email arrived |
+| 23/11/2026, 13:51 | n8n webhook switched to require the `X-Slice-Key` header, through the n8n API | No key: 403, no run. Wrong key: 403, no run. Right key: 200, run passed. One extra keyed test call added a sixth made-up row |
 
 ## Limits met
 
