@@ -1,0 +1,25 @@
+{
+  "_about": "Claude API list prices used to cost each routing decision. One file, so no price is typed anywhere else. scripts/setup_run_log.py loads it into gtm_v2.model_prices, and the run-log views work out cost from it. Re-read the source page before relying on a figure.",
+  "currency": "USD",
+  "unit": "per million tokens",
+  "models": {
+    "claude-haiku-5-5": {
+      "input": 0.10,
+      "output": 0.50,
+      "long_prompt_over_tokens": 100000,
+      "long_input": 0.50,
+      "long_output": 2.50,
+      "read_on": "2026-11-23",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing"
+    },
+    "claude-sonnet-5-5": {
+      "input": 2.00,
+      "output": 10.00,
+      "long_prompt_over_tokens": null,
+      "long_input": null,
+      "long_output": null,
+      "read_on": "2026-11-23",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing"
+    }
+  }
+}

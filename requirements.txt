@@ -1,3 +1,6 @@
 requests>=2.32,<3
 python-dotenv>=1.0,<2
 pytest>=8.0,<9
+# Version 2, chapter 2: the routing step calls Claude, and the run log lives in the local Supabase Postgres.
+anthropic>=2.12,<3
+psycopg[binary]>=3.2,<4
