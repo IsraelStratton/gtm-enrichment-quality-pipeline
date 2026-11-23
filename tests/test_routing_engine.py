@@ -293,7 +293,7 @@ FORM = {"approver": "reviewer-01", "row_1": "Approve: enterprise_anz \u00b7 high
 def test_every_write_carries_a_stamp_back_to_the_log(eng):
     """A1.1: count the writes and find a stamp on each."""
     _, props, out = decide(eng, FORM)
-    writes = out["hubspot"]["inputs"]
+    writes = out["write"]["body"]["inputs"]
     decisions = {d["decision_id"]: d for d in out["decisions"]}
     assert len(writes) == sum(d["action"] != "rejected" for d in decisions.values()) == 2
     for w in writes:
@@ -310,7 +310,7 @@ def test_a_changed_row_keeps_what_was_proposed_and_what_was_chosen(eng):
     d = next(x for x in out["decisions"] if x["row_number"] == 2)
     assert (p["route"], p["priority"]) == ("enterprise_anz", "high")
     assert (d["action"], d["chosen_route"], d["chosen_priority"]) == ("changed", "mid_market", "medium")
-    w = next(x for x in out["hubspot"]["inputs"] if x["properties"]["gtm_routing_status"] == "changed")
+    w = next(x for x in out["write"]["body"]["inputs"] if x["properties"]["gtm_routing_status"] == "changed")
     assert w["properties"]["gtm_route"] == "mid_market"
     assert "changed this from enterprise_anz \u00b7 high to mid_market \u00b7 medium" in w["properties"]["gtm_routing_reason"]
 
@@ -319,7 +319,7 @@ def test_rejected_rows_are_logged_but_never_written(eng):
     _, _, out = decide(eng, FORM)
     d = next(x for x in out["decisions"] if x["row_number"] == 3)
     assert (d["action"], d["stamp"], d["crm_write_status"]) == ("rejected", None, "not_written")
-    assert all(w["properties"]["name"] != "Numbat Data" for w in out["hubspot"]["inputs"])
+    assert all(w["properties"]["name"] != "Numbat Data" for w in out["write"]["body"]["inputs"])
 
 
 def test_no_reviewer_name_means_nothing_is_written(eng):
@@ -341,7 +341,7 @@ def test_a_row_with_no_choice_is_not_written(eng):
 
 def test_decision_log_rows_record_what_hubspot_did(eng):
     _, _, out = decide(eng, FORM)
-    domains = [w["id"] for w in out["hubspot"]["inputs"]]
+    domains = [w["id"] for w in out["write"]["body"]["inputs"]]
     ok = {"statusCode": 200, "body": {"status": "COMPLETE", "results": [
         {"id": "111", "new": False, "properties": {"clay_domain_key": domains[0]}},
         {"id": "222", "new": True, "properties": {"clay_domain_key": domains[1]}}]}}
@@ -353,3 +353,131 @@ def test_decision_log_rows_record_what_hubspot_did(eng):
     assert "INVALID_OPTION" in failed[0]["crm_error"]
     summary = eng.call("summariseDecisions", rows)
     assert summary == {"decisions": 3, "approved": 1, "changed": 1, "rejected": 1, "written": 2, "failed": 0}
+
+
+# ------------------------------------------------------------------ chapter 4: the second CRM target
+
+SETUP = json.loads((REPO / "salesforce/setup.json").read_text(encoding="utf-8"))
+
+
+def decide_on(eng, target, form=FORM):
+    pb, props, leads = proposals(eng)
+    return pb, props, eng.call("applyDecisions", pb, props, leads, form, {"decided_at": "2026-11-23T05:10:00.123Z", "target": target})
+
+
+def test_hubspot_is_the_default_target_and_its_write_is_unchanged(eng):
+    _, _, default = decide(eng, FORM)
+    _, _, named = decide_on(eng, "hubspot")
+    assert default == named
+    assert default["target"] == default["write"]["target"] == "hubspot"
+    assert set(default["write"]["body"]) == {"inputs"} and default["write"]["count"] == 2
+    assert all(d["crm_target"] == "hubspot" for d in default["decisions"])
+
+
+def test_an_unknown_target_writes_nothing(eng):
+    with pytest.raises(EngineError, match="unknown CRM target"):
+        decide_on(eng, "dynamics")
+
+
+def test_salesforce_gets_the_same_decisions_and_stamps_as_hubspot(eng):
+    """One engine: the review, the decisions and the stamps do not depend on the CRM."""
+    _, _, hs = decide_on(eng, "hubspot")
+    _, _, sf = decide_on(eng, "salesforce")
+    strip = lambda ds: [{k: v for k, v in d.items() if k != "crm_target"} for d in ds]  # noqa: E731
+    assert strip(hs["decisions"]) == strip(sf["decisions"])
+    assert [r["GTM_Decision_Stamp__c"] for r in sf["write"]["body"]["records"]] == [w["properties"]["gtm_decision_stamp"] for w in hs["write"]["body"]["inputs"]]
+    assert all(d["crm_target"] == "salesforce" for d in sf["decisions"])
+    assert sf["write"]["keys"] == hs["write"]["keys"] == [w["id"] for w in hs["write"]["body"]["inputs"]]
+
+
+def test_salesforce_records_are_account_upserts_on_the_external_id(eng):
+    _, props, out = decide_on(eng, "salesforce")
+    body = out["write"]["body"]
+    assert body["allOrNone"] is False and len(body["records"]) == out["write"]["count"] == 2
+    for rec in body["records"]:
+        assert rec["attributes"] == {"type": "Account"}
+        assert rec[SETUP["external_id_field"]] == rec["Website"] and "Id" not in rec
+        assert rec["GTM_Routing_Status__c"] in ("approved", "changed")
+    changed = next(r for r in body["records"] if r["GTM_Routing_Status__c"] == "changed")
+    assert (changed["GTM_Route__c"], changed["GTM_Priority__c"]) == ("mid_market", "medium")
+    assert "changed this from enterprise_anz · high to mid_market · medium" in changed["GTM_Routing_Reason__c"]
+
+
+def test_salesforce_records_use_only_the_fields_in_the_setup_file(eng):
+    _, _, out = decide_on(eng, "salesforce")
+    allowed = {f["api_name"] for f in SETUP["custom_fields"]} | set(SETUP["standard_fields_written"]) | {"attributes"}
+    for rec in out["write"]["body"]["records"]:
+        assert set(rec) <= allowed, set(rec) - allowed
+
+
+def test_salesforce_picklists_hold_exactly_the_playbook_codes(pb):
+    """If the playbook gains a route, this fails until salesforce/setup.json (and the org) has it."""
+    fields = {f["api_name"]: f for f in SETUP["custom_fields"]}
+    assert [v["api_name"] for v in fields["GTM_Route__c"]["values"]] == [r["route"] for r in pb["routes"]]
+    assert [v["api_name"] for v in fields["GTM_Priority__c"]["values"]] == pb["priorities"]
+    assert [v["api_name"] for v in fields["GTM_Routing_Status__c"]["values"]] == ["approved", "changed"]
+    owner_teams = dict(re.findall(r"^\| `([a-z_]+)` \| ([^|]+?) \|", TEXT.split("## Routes\n", 1)[1].split("\n## ", 1)[0], re.M))
+    assert {v["api_name"]: v["label"] for v in fields["GTM_Route__c"]["values"]} == owner_teams
+
+
+def test_the_longest_stamp_fits_the_salesforce_text_field(eng):
+    """Text(255): an 80-character reviewer name (the engine's limit) and a long run id still fit."""
+    pb, props, leads = proposals(eng)
+    long_props = [dict(p, decision_id="D-n8n9999999-99") for p in props]
+    long_leads = {"D-n8n9999999-99": next(iter(leads.values()))}
+    out = eng.call("applyDecisions", pb, long_props[:1], long_leads,
+                   {"approver": "x" * 200, "row_1": FORM["row_1"]}, {"decided_at": "2026-11-23T05:10:00Z", "target": "salesforce"})
+    stamp = out["write"]["body"]["records"][0]["GTM_Decision_Stamp__c"]
+    limit = next(f["length"] for f in SETUP["custom_fields"] if f["api_name"] == "GTM_Decision_Stamp__c")
+    assert len(stamp) <= limit, len(stamp)
+
+
+def test_a_reason_fits_the_salesforce_long_text_field(eng):
+    p = check(eng, lead(eng), http(answer(reason="word " * 200)))
+    d = {"action": "changed", "chosen_route": "smb", "chosen_priority": "low"}
+    limit = next(f["length"] for f in SETUP["custom_fields"] if f["api_name"] == "GTM_Routing_Reason__c")
+    assert len(eng.call("salesforceRecord", lead(eng), p, d)["GTM_Routing_Reason__c"]) <= limit
+
+
+def test_no_usable_proposal_clears_the_salesforce_confidence(eng):
+    p = check(eng, lead(eng), http(raw_text="{}"))
+    rec = eng.call("salesforceRecord", lead(eng), p, {"action": "changed", "chosen_route": "smb", "chosen_priority": "low", "stamp": "s"})
+    assert "GTM_Routing_Confidence__c" in rec and rec["GTM_Routing_Confidence__c"] is None
+    assert rec["GTM_Routing_Reason__c"].startswith("Set by the reviewer")
+
+
+def test_decision_log_rows_record_what_salesforce_did(eng):
+    _, _, out = decide_on(eng, "salesforce")
+    ok = {"statusCode": 200, "body": [{"id": "001A", "success": True, "errors": [], "created": True},
+                                      {"id": "001B", "success": True, "errors": [], "created": False}]}
+    rows = eng.call("decisionLogRows", out["decisions"], ok)
+    assert [r["crm_write_status"] for r in rows] == ["written", "written", "not_written"]
+    assert [r["crm_record_id"] for r in rows] == ["001A", "001B", None]
+    assert all(r["crm_target"] == "salesforce" for r in rows)
+
+
+def test_one_refused_salesforce_record_fails_only_that_row(eng):
+    _, _, out = decide_on(eng, "salesforce")
+    partial = {"statusCode": 200, "body": [
+        {"success": False, "errors": [{"statusCode": "INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST", "message": "GTM Route: bad value", "fields": ["GTM_Route__c"]}]},
+        {"id": "001B", "success": True, "errors": [], "created": True}]}
+    rows = eng.call("decisionLogRows", out["decisions"], partial)
+    assert [r["crm_write_status"] for r in rows] == ["failed", "written", "not_written"]
+    assert rows[0]["crm_error"] == "INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST: GTM Route: bad value"
+
+
+def test_a_refused_salesforce_request_fails_every_write_with_its_reason(eng):
+    _, _, out = decide_on(eng, "salesforce")
+    for reply, words in (
+        ({"statusCode": 401, "body": [{"errorCode": "INVALID_SESSION_ID", "message": "Session expired or invalid"}]}, "INVALID_SESSION_ID: Session expired"),
+        ({"statusCode": 200, "body": [{"id": "001A", "success": True}]}, "returned 1 results for 2 records"),
+    ):
+        rows = eng.call("decisionLogRows", out["decisions"], reply)
+        assert [r["crm_write_status"] for r in rows] == ["failed", "failed", "not_written"]
+        assert words in rows[0]["crm_error"], rows[0]["crm_error"]
+
+
+def test_the_review_page_names_the_target(eng):
+    pb, props, leads = proposals(eng)
+    assert "Nothing is written to HubSpot" in eng.call("buildReviewForm", pb, props, {"leads": leads})[0]["html"]
+    assert "Nothing is written to Salesforce" in eng.call("buildReviewForm", pb, props, {"leads": leads, "target": "salesforce"})[0]["html"]

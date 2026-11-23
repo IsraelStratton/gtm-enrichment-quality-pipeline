@@ -1,8 +1,12 @@
-// Run the Code nodes of n8n/workflow-v2.json outside n8n, in workflow order, with the n8n
-// helpers they use ($, $input, $json, $execution) stubbed. The HTTP, Postgres and form nodes
-// are replaced by the answers the test passes in. Used by tests/test_n8n_routing_workflow.py.
+// Run the Code nodes of a routing workflow (n8n/workflow-v2.json, or the Salesforce copy) outside
+// n8n, in workflow order, with the n8n helpers they use ($, $input, $json, $execution) stubbed.
+// The HTTP, Postgres and form nodes are replaced by the answers the test passes in. Used by
+// tests/test_n8n_routing_workflow.py.
 //
-// stdin: {workflow, rows, playbook, answers: {lead_id: http result}, execution_id, upsert: "ok" | "fail"}
+// stdin: {workflow, rows, playbook, answers: {lead_id: http result}, execution_id,
+//         upsert: "ok" | "fail" | "partial"}
+// The write node is whichever node "Anything to Write?" sends to; its fake reply is in the
+// shape that CRM uses (HubSpot or Salesforce).
 // stdout: the output of every stage, as JSON.
 'use strict';
 const fs = require('fs');
@@ -64,12 +68,30 @@ out['Review Page'] = [{ json: form }];
 out['Apply Decisions'] = run('Apply Decisions', out['Review Page']);
 
 const applied = out['Apply Decisions'][0].json;
+const writeNode = wf.connections['Anything to Write?'].main[0][0].node;
+const records = applied.write.target === 'salesforce' ? applied.write.body.records : applied.write.body.inputs;
 let toLog = out['Apply Decisions'];
-if (applied.hubspot.inputs.length) {
-  out['HubSpot Batch Upsert'] = input.upsert === 'fail'
-    ? [{ json: { statusCode: 400, headers: {}, body: { status: 'error', message: 'Property values were not valid', category: 'VALIDATION_ERROR' } } }]
-    : [{ json: { statusCode: 200, headers: {}, body: { status: 'COMPLETE', results: applied.hubspot.inputs.map((x, i) => ({ id: String(9000 + i), new: i === 0, properties: { clay_domain_key: x.id } })) } } }];
-  toLog = out['HubSpot Batch Upsert'];
+
+function hubspotReply() {
+  if (input.upsert === 'fail') {
+    return { statusCode: 400, headers: {}, body: { status: 'error', message: 'Property values were not valid', category: 'VALIDATION_ERROR' } };
+  }
+  return { statusCode: 200, headers: {}, body: { status: 'COMPLETE', results: records.map((x, i) => ({ id: String(9000 + i), new: i === 0, properties: { clay_domain_key: x.id } })) } };
+}
+
+function salesforceReply() {
+  if (input.upsert === 'fail') {
+    return { statusCode: 400, headers: {}, body: [{ errorCode: 'INVALID_FIELD', message: "No such column 'GTM_Route__c' on sobject of type Account" }] };
+  }
+  // 'partial': the first record is refused on its own, as Salesforce does with allOrNone false.
+  return { statusCode: 200, headers: {}, body: records.map((x, i) => (input.upsert === 'partial' && i === 0
+    ? { success: false, errors: [{ statusCode: 'INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST', message: 'GTM Route: bad value for restricted picklist field', fields: ['GTM_Route__c'] }] }
+    : { id: `001${String(i).padStart(15, '0')}`, success: true, errors: [], created: i === 0 })) };
+}
+
+if (applied.write.count) {
+  out[writeNode] = [{ json: applied.write.target === 'salesforce' ? salesforceReply() : hubspotReply() }];
+  toLog = out[writeNode];
 }
 out['Build Decision Log'] = run('Build Decision Log', toLog);
 out['Read Run Summary'] = [{ json: { run_id: out['Build Decision Log'][0].json.run_id, proposals: proposals.length, total_cost_usd: '0.004700', cost_per_decision_usd: '0.00039167' } }];
@@ -83,6 +105,7 @@ process.stdout.write(JSON.stringify({
   review: out['Build Review'][0].json,
   form,
   applied,
+  writeNode,
   log: out['Build Decision Log'][0].json,
   done: out['Done Message'][0].json,
 }));

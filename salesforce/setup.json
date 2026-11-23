@@ -1,0 +1,141 @@
+{
+  "about": "Chapter 4: what the Salesforce developer org needs so the routing engine can write to it. The Setup steps in docs/v2/chapter-4-build.md are written from this file; scripts/salesforce_setup_check.py reads the org and checks it against this file; tests check that the engine writes only these fields and that the picklists hold the playbook's codes. Made-up, company-level data only.",
+  "api_version": "v64.0",
+  "object": "Account",
+  "external_id_field": "Clay_Domain_Key__c",
+  "custom_fields": [
+    {
+      "label": "Clay domain key",
+      "api_name": "Clay_Domain_Key__c",
+      "setup_type": "Text",
+      "describe_type": "string",
+      "length": 255,
+      "unique": true,
+      "case_sensitive": false,
+      "external_id": true,
+      "description": "The company's normalised domain. The upsert key, as clay_domain_key is in HubSpot."
+    },
+    {
+      "label": "GTM route",
+      "api_name": "GTM_Route__c",
+      "setup_type": "Picklist",
+      "describe_type": "picklist",
+      "restricted": true,
+      "values_from": "playbook routes",
+      "values": [
+        {"api_name": "enterprise_anz", "label": "Enterprise sales ANZ"},
+        {"api_name": "enterprise_global", "label": "Enterprise sales global"},
+        {"api_name": "mid_market", "label": "Mid-market sales"},
+        {"api_name": "smb", "label": "SMB sales"},
+        {"api_name": "partnerships", "label": "Partnerships"},
+        {"api_name": "customer_support", "label": "Customer support"},
+        {"api_name": "nurture", "label": "Marketing nurture"},
+        {"api_name": "disqualify", "label": "Not a fit"}
+      ],
+      "description": "The route a person approved or chose. Set by the GTM v2 routing workflow only."
+    },
+    {
+      "label": "GTM priority",
+      "api_name": "GTM_Priority__c",
+      "setup_type": "Picklist",
+      "describe_type": "picklist",
+      "restricted": true,
+      "values_from": "playbook priorities",
+      "values": [
+        {"api_name": "high", "label": "High"},
+        {"api_name": "medium", "label": "Medium"},
+        {"api_name": "low", "label": "Low"}
+      ],
+      "description": "The priority a person approved or chose."
+    },
+    {
+      "label": "GTM routing reason",
+      "api_name": "GTM_Routing_Reason__c",
+      "setup_type": "Text Area (Long)",
+      "describe_type": "textarea",
+      "length": 1000,
+      "visible_lines": 3,
+      "description": "The AI's two-line reason, and what the reviewer changed, if anything."
+    },
+    {
+      "label": "GTM routing confidence",
+      "api_name": "GTM_Routing_Confidence__c",
+      "setup_type": "Number",
+      "describe_type": "double",
+      "setup_length": 1,
+      "setup_decimal_places": 3,
+      "precision": 4,
+      "scale": 3,
+      "description": "The AI's confidence, 0 to 1. Empty when the AI gave no usable proposal."
+    },
+    {
+      "label": "GTM routing status",
+      "api_name": "GTM_Routing_Status__c",
+      "setup_type": "Picklist",
+      "describe_type": "picklist",
+      "restricted": true,
+      "values_from": "decision actions that write",
+      "values": [
+        {"api_name": "approved", "label": "Approved"},
+        {"api_name": "changed", "label": "Changed"}
+      ],
+      "description": "What the reviewer did. Rejected rows are never written."
+    },
+    {
+      "label": "GTM decision stamp",
+      "api_name": "GTM_Decision_Stamp__c",
+      "setup_type": "Text",
+      "describe_type": "string",
+      "length": 255,
+      "description": "Who decided: decision id, model, playbook version, action, reviewer and time. Leads back to gtm_v2.decision_record in one query."
+    }
+  ],
+  "standard_fields_written": {
+    "Name": "company_name",
+    "Website": "domain",
+    "BillingCity": "hq_city",
+    "BillingCountry": "hq_country",
+    "NumberOfEmployees": "employee_count"
+  },
+  "permission_set": {
+    "label": "GTM v2 routing writer",
+    "api_name": "GTM_v2_Routing_Writer",
+    "license": "Salesforce API Integration",
+    "object_permissions": {"Account": ["Read", "Create", "Edit"]},
+    "object_permissions_never": ["Delete", "View All", "Modify All"],
+    "field_permissions_read_edit": [
+      "Clay_Domain_Key__c", "GTM_Route__c", "GTM_Priority__c", "GTM_Routing_Reason__c", "GTM_Routing_Confidence__c",
+      "GTM_Routing_Status__c", "GTM_Decision_Stamp__c", "Website", "Billing Address", "Employees"
+    ]
+  },
+  "integration_user": {
+    "first_name": "GTM",
+    "last_name": "Integration",
+    "alias": "gtmint",
+    "user_license": "Salesforce Integration",
+    "profile": "Minimum Access - API Only Integrations",
+    "permission_set_license": "Salesforce API Integration",
+    "permission_sets": ["GTM v2 routing writer"],
+    "note": "API only: it cannot sign in to Salesforce's screens and has no password. A Developer Edition org has one Salesforce Integration licence."
+  },
+  "external_client_app": {
+    "name": "GTM v2 routing (n8n)",
+    "distribution_state": "Local",
+    "oauth_scopes": ["Manage user data via APIs (api)"],
+    "flow": "Client Credentials",
+    "run_as": "the integration user",
+    "permitted_users": "Admin approved users are pre-authorized",
+    "permitted_permission_sets": ["GTM v2 routing writer"],
+    "callback_url": "http://localhost:5678/rest/oauth2-credential/callback",
+    "callback_note": "Salesforce requires a callback URL. The client-credentials flow never uses it."
+  },
+  "n8n_credential": {
+    "name": "Salesforce gtm-pipeline (client credentials)",
+    "type": "OAuth2 API",
+    "grant_type": "Client Credentials",
+    "access_token_url": "https://<My Domain host>/services/oauth2/token",
+    "scope": "",
+    "authentication": "Body"
+  },
+  "env_keys": ["SALESFORCE_DOMAIN", "SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET"]
+}

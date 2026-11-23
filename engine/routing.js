@@ -1,4 +1,4 @@
-// GTM pipeline v2, chapter 2: the routing engine.
+// GTM pipeline v2, chapters 2 and 4: the routing engine.
 //
 // One file, used three ways:
 //   1. scripts/build_n8n_routing.py pastes it into each n8n Code node that needs it;
@@ -10,15 +10,23 @@
 // The routing rules are not here. They live in the playbook (SKILL.md), which this file
 // parses on every run. The guard rails are here, so a playbook edit cannot switch them off.
 
-const ENGINE_VERSION = '1.0.0';
+const ENGINE_VERSION = '1.1.0';
 const GUARD_FLAGS = ['possible_injection', 'personal_data', 'spam', 'off_topic', 'unclear', 'size_conflict'];
 const OUTPUT_KEYS = ['intent', 'route', 'priority', 'reason', 'confidence', 'flags'];
 const MAX_REASON_CHARS = 320;
 const MAX_ENQUIRY_CHARS = 2000;
 const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_EFFORT = 'low';
-const MAX_BATCH = 100;
 const REJECT_LABEL = 'Reject: do not write to the CRM';
+
+// Chapter 4: the CRMs the engine can write to. One target per run. Everything before the
+// write (data rules, AI step, guard rails, review, stamp) is the same for every target; only
+// the record shape, the batch limit and how the reply is read differ.
+const CRM_TARGETS = {
+  hubspot: { label: 'HubSpot', maxBatch: 100 },
+  salesforce: { label: 'Salesforce', maxBatch: 200 },
+};
+const DEFAULT_TARGET = 'hubspot';
 
 const GUARD_RULES = [
   'You are the routing step in a lead intake pipeline. You read one company record and its enquiry, and you propose a route, a priority and a short reason. A person reviews every proposal before anything is written to the CRM. You cannot send anything to anyone.',
@@ -437,9 +445,12 @@ function normaliseHttp(http) {
     try { body = JSON.parse(body); } catch (err) { return { error: 'response body is not JSON', status }; }
   }
   if (status >= 400 || (body && (body.type === 'error' || body.status === 'error'))) {
-    // Claude puts the message in error.message; HubSpot puts it in message.
+    // Claude puts the message in error.message; HubSpot puts it in message; Salesforce sends
+    // a list of {errorCode, message}.
+    const sf = Array.isArray(body) && body[0] && typeof body[0].message === 'string' ? body[0] : null;
     const m = body && body.error && body.error.message ? body.error.message
-      : (body && typeof body.message === 'string' ? body.message : `HTTP ${status}`);
+      : (body && typeof body.message === 'string' ? body.message
+        : (sf ? `${sf.errorCode ? `${sf.errorCode}: ` : ''}${sf.message}` : `HTTP ${status}`));
     return { error: `HTTP ${status}: ${String(m)}`.slice(0, 300), status };
   }
   const headers = http.headers || {};
@@ -624,7 +635,7 @@ function buildReviewForm(pb, proposals, meta) {
   const html = `<p><b>Run ${escapeHtml(m.run_id || '')}.</b> ${sorted.length} proposals, ${flagged} flagged for a close look`
     + `${m.quarantined ? `; ${m.quarantined} rows were stopped by the data rules and are in the quarantine table` : ''}.`
     + ` Playbook ${escapeHtml(pb.name)} ${escapeHtml(pb.version)}, model ${escapeHtml(m.model || '')}.</p>`
-    + '<p>Nothing is written to HubSpot until you submit. Choose for every row: approve, change or reject. Rejected rows are not written.</p>'
+    + `<p>Nothing is written to ${escapeHtml(CRM_TARGETS[crmTarget(m.target)].label)} until you submit. Choose for every row: approve, change or reject. Rejected rows are not written.</p>`
     + `<table><tr><th>Lead</th><th>Company</th><th>Enquiry</th><th>AI proposal</th><th>AI reason</th><th>Why flagged</th></tr>${rowsHtml}</table>`;
   const fields = [{ fieldType: 'html', html }];
   fields.push({ fieldLabel: 'Your name or reviewer label', fieldName: 'approver', fieldType: 'text', requiredField: true, placeholder: 'e.g. reviewer-01' });
@@ -670,6 +681,12 @@ function crmReason(p, d) {
   return p.reason;
 }
 
+function crmTarget(target) {
+  const t = target === undefined || target === null || target === '' ? DEFAULT_TARGET : String(target);
+  if (!Object.prototype.hasOwnProperty.call(CRM_TARGETS, t)) throw new Error(`write: unknown CRM target ${t}`);
+  return t;
+}
+
 function hubspotInput(lead, p, d) {
   const props = {
     name: lead.company_name,
@@ -689,15 +706,50 @@ function hubspotInput(lead, p, d) {
   return { idProperty: 'clay_domain_key', id: lead.domain, properties: props };
 }
 
+// Salesforce (chapter 4): one Account per company, upserted on the external ID field
+// Clay_Domain_Key__c, the same key version 1 uses in HubSpot, so a second run updates the
+// Account instead of making a copy. The fields are listed in salesforce/setup.json, which the
+// setup check reads in the org. Industry is not sent: Salesforce's standard Industry list is
+// not HubSpot's, and the version 1 mapping is HubSpot's.
+function salesforceRecord(lead, p, d) {
+  const rec = {
+    attributes: { type: 'Account' },
+    Clay_Domain_Key__c: lead.domain,
+    Name: lead.company_name,
+    Website: lead.domain,
+    GTM_Route__c: d.chosen_route,
+    GTM_Priority__c: d.chosen_priority,
+    GTM_Routing_Reason__c: crmReason(p, d),
+    // null clears a confidence left by an earlier run when this time the AI gave no usable proposal.
+    GTM_Routing_Confidence__c: p.output_valid ? p.confidence : null,
+    GTM_Routing_Status__c: d.action,
+    GTM_Decision_Stamp__c: d.stamp,
+  };
+  if (lead.hq_city) rec.BillingCity = lead.hq_city;
+  if (lead.hq_country) rec.BillingCountry = lead.hq_country;
+  if (lead.employee_count !== null && lead.employee_count !== undefined) rec.NumberOfEmployees = lead.employee_count;
+  return rec;
+}
+
+function writeBody(target, entries) {
+  if (target === 'salesforce') return { allOrNone: false, records: entries };
+  return { inputs: entries };
+}
+
 // proposals: the checked proposals. leads: {decision_id: lead}. form: the review page's answers.
+// meta.target: 'hubspot' (the default) or 'salesforce'. The write is the body for that CRM's
+// batch upsert, for approved and changed rows only; keys lists their domains in the same order.
 function applyDecisions(pb, proposals, leads, form, meta) {
+  const m = meta || {};
+  const target = crmTarget(m.target);
   const f = form || {};
   const approver = String(f.approver || '').replace(/\s+/g, ' ').trim().slice(0, 80);
   if (!approver) throw new Error('review: no reviewer name, so nothing is written');
-  const decidedAt = isoSeconds((meta && meta.decided_at) || new Date().toISOString());
+  const decidedAt = isoSeconds(m.decided_at || new Date().toISOString());
   const note = String(f.note || '').trim().slice(0, 500);
   const decisions = [];
-  const inputs = [];
+  const entries = [];
+  const keys = [];
   for (const p of proposals) {
     const lead = leads[p.decision_id];
     if (!lead) throw new Error(`review: no lead for ${p.decision_id}`);
@@ -714,7 +766,7 @@ function applyDecisions(pb, proposals, leads, form, meta) {
       approver,
       decided_at: decidedAt,
       note: choice ? note : `${note ? `${note} ` : ''}(no choice was made for this row, so it was not written)`.trim(),
-      crm_target: 'hubspot',
+      crm_target: target,
       stamp: null,
       crm_write_status: 'not_written',
       crm_record_id: null,
@@ -723,40 +775,69 @@ function applyDecisions(pb, proposals, leads, form, meta) {
     if (d.action !== 'rejected') {
       d.stamp = buildStamp(p, d);
       d.crm_write_status = 'pending';
-      inputs.push(hubspotInput(lead, p, d));
+      entries.push(target === 'salesforce' ? salesforceRecord(lead, p, d) : hubspotInput(lead, p, d));
+      keys.push(lead.domain);
     }
     decisions.push(d);
   }
-  if (inputs.length > MAX_BATCH) throw new Error(`write: ${inputs.length} rows is more than one HubSpot batch of ${MAX_BATCH}`);
-  return { decisions, hubspot: { inputs } };
+  const max = CRM_TARGETS[target].maxBatch;
+  if (entries.length > max) throw new Error(`write: ${entries.length} rows is more than one ${CRM_TARGETS[target].label} batch of ${max}`);
+  return { decisions, target, write: { target, count: entries.length, keys, body: writeBody(target, entries) } };
 }
 
-// upsert: the HubSpot batch-upsert result in n8n's full-response shape, or null when nothing was sent.
+// What the CRM did with each record: {domain: {id} or {error}}.
+// HubSpot answers {results: [{id, properties}]}, matched on clay_domain_key. Salesforce answers
+// a list of {id, success, errors} in the order the records were sent.
+function writeOutcomes(target, res, keys) {
+  const out = {};
+  if (target === 'salesforce') {
+    const list = Array.isArray(res.body) ? res.body : null;
+    if (!list || list.length !== keys.length) {
+      const why = `Salesforce returned ${list ? list.length : 'no'} results for ${keys.length} records`;
+      for (const k of keys) out[k] = { error: why };
+      return out;
+    }
+    keys.forEach((k, i) => {
+      const r = list[i] || {};
+      if (r.success && r.id) out[k] = { id: String(r.id) };
+      else {
+        const e = (r.errors && r.errors[0]) || {};
+        out[k] = { error: `${e.statusCode ? `${e.statusCode}: ` : ''}${e.message || 'Salesforce did not save this record'}`.slice(0, 300) };
+      }
+    });
+    return out;
+  }
+  for (const r of (res.body && res.body.results) || []) {
+    const props = r.properties || {};
+    const key = props.clay_domain_key || props.domain;
+    if (key) out[key] = { id: String(r.id) };
+  }
+  for (const k of keys) if (!out[k]) out[k] = { error: 'HubSpot returned no record for this domain' };
+  return out;
+}
+
+// upsert: the CRM's batch-upsert result in n8n's full-response shape, or null when nothing was sent.
 function decisionLogRows(decisions, upsert) {
   const res = upsert ? normaliseHttp(upsert) : null;
-  const byKey = {};
-  if (res && !res.error) {
-    for (const r of (res.body && res.body.results) || []) {
-      const props = r.properties || {};
-      const key = props.clay_domain_key || props.domain;
-      if (key) byKey[key] = r.id;
-    }
-  }
+  const writes = decisions.filter((d) => d.action !== 'rejected');
+  const target = crmTarget(writes.length ? writes[0].crm_target : DEFAULT_TARGET);
+  const outcomes = res && !res.error ? writeOutcomes(target, res, writes.map((d) => d.domain)) : {};
   return decisions.map((d) => {
     const row = Object.assign({}, d);
     if (d.action === 'rejected') return row;
+    const o = outcomes[d.domain];
     if (!res) {
       row.crm_write_status = 'failed';
       row.crm_error = 'no write was attempted';
     } else if (res.error) {
       row.crm_write_status = 'failed';
       row.crm_error = res.error;
-    } else if (byKey[d.domain]) {
+    } else if (o && o.id) {
       row.crm_write_status = 'written';
-      row.crm_record_id = String(byKey[d.domain]);
+      row.crm_record_id = o.id;
     } else {
       row.crm_write_status = 'failed';
-      row.crm_error = 'HubSpot returned no record for this domain';
+      row.crm_error = (o && o.error) || 'the CRM returned no record for this domain';
     }
     return row;
   });
@@ -781,6 +862,6 @@ const ENGINE = {
   parsePlaybook, allowedRoutes, sha256Hex, normaliseDomain, toCount, leadFromRow, decisionId, modelRecord,
   buildSystemPrompt, buildSchema, buildRequest, screenEnquiry, quotesInstructions, validateOutput, normaliseHttp,
   checkProposal, reviewOptions, sortForReview, buildReviewForm, parseChoice, buildStamp, hubspotInput,
-  applyDecisions, decisionLogRows, summariseDecisions, escapeHtml,
+  salesforceRecord, CRM_TARGETS, crmTarget, applyDecisions, decisionLogRows, summariseDecisions, escapeHtml,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = ENGINE;

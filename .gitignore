@@ -28,3 +28,6 @@ slice/n8n/*.local.json
 
 # Private values the pre-push check looks for (tool IDs); never committed
 .prepush-private.local
+
+# Chapter 4: the Salesforce workflow filled in with the org's My Domain host, for import
+n8n/*.local.json

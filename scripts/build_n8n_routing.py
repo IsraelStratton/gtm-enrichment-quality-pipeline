@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Build the chapter 2 n8n workflow (n8n/workflow-v2.json) from version 1 and the routing engine.
+"""Build the routing workflows from version 1 and the routing engine: one per CRM target.
 
-The file is made by this script, never edited by hand:
+  n8n/workflow-v2.json             chapter 2: writes to HubSpot
+  n8n/workflow-v2-salesforce.json  chapter 4: the same workflow, writing to Salesforce
+
+The two files differ only in what names the target (the workflow name, the form path and
+wording, the target the Code nodes pass to the engine) and in the one write node. A test
+checks that. Both are made by this script, never edited by hand:
   - the upload, the CSV step, the data rules and the quarantine come from version 1
     (n8n/workflow.json), unchanged, so the rules node is byte-for-byte the tested one;
   - every Code node that needs the engine gets engine/routing.js pasted in whole, so n8n
     runs exactly the code pytest tests;
   - credentials are named but carry no ID. n8n matches them by name and type on import,
-    so the file holds no instance ID and imports as it is.
+    so the file holds no instance ID and imports as it is;
+  - the Salesforce file holds a placeholder for the org's My Domain host, which is private.
+    --local writes n8n/workflow-v2-salesforce.local.json (ignored by git) with the host from
+    .env (SALESFORCE_DOMAIN), for import into n8n.
 
-  python scripts/build_n8n_routing.py           # write n8n/workflow-v2.json
-  python scripts/build_n8n_routing.py --check   # exit 1 if the file is out of date
+  python scripts/build_n8n_routing.py           # write both files
+  python scripts/build_n8n_routing.py --check   # exit 1 if either file is out of date
+  python scripts/build_n8n_routing.py --local   # also write the filled-in Salesforce copy
 
 Exit codes: 0 done (or up to date), 1 out of date, 2 could not build.
 """
@@ -19,6 +28,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -27,9 +37,32 @@ REPO = Path(__file__).resolve().parents[1]
 V1 = REPO / "n8n" / "workflow.json"
 ENGINE = REPO / "engine" / "routing.js"
 OUTPUT = REPO / "n8n" / "workflow-v2.json"
+ENV = REPO / ".env"
 
 NAME = "GTM v2 chapter 2: route leads with approval"
 FORM_PATH = "gtm-v2-route-leads"
+SALESFORCE_API_VERSION = "v64.0"
+SALESFORCE_HOST_PLACEHOLDER = "YOUR-MY-DOMAIN.my.salesforce.com"
+SALESFORCE_HOST_RE = r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.my\.salesforce\.com$"
+TARGETS = {
+    "hubspot": {
+        "output": REPO / "n8n" / "workflow-v2.json",
+        "name": NAME,
+        "form_path": FORM_PATH,
+        "label": "HubSpot",
+        "write_node": "HubSpot Batch Upsert",
+        "webhook_prefix": "",
+    },
+    "salesforce": {
+        "output": REPO / "n8n" / "workflow-v2-salesforce.json",
+        "local": REPO / "n8n" / "workflow-v2-salesforce.local.json",
+        "name": "GTM v2 chapter 4: route leads with approval (Salesforce)",
+        "form_path": "gtm-v2-route-leads-salesforce",
+        "label": "Salesforce",
+        "write_node": "Salesforce Upsert",
+        "webhook_prefix": "salesforce ",
+    },
+}
 MODEL = "claude-haiku-5-5"
 ANTHROPIC_VERSION = "2026-10-21"
 # The skins folder is mounted read-only into the n8n container (scripts/n8n_docker.sh).
@@ -37,6 +70,9 @@ PLAYBOOK_PATH = "/home/node/gtm-skins/lead-routing/lead-routing-playbook/SKILL.m
 CREDENTIALS = {
     "claude": {"httpHeaderAuth": {"id": None, "name": "Claude key gtm-pipeline-v2"}},
     "hubspot": {"httpHeaderAuth": {"id": None, "name": "HubSpot Service Key"}},
+    # n8n's general OAuth2 login with the client-credentials grant, not n8n's Salesforce login,
+    # which asks for the "full" scope (fixed in n8n's code). See docs/v2/control-sheet.md.
+    "salesforce": {"oAuth2Api": {"id": None, "name": "Salesforce gtm-pipeline (client credentials)"}},
     "postgres": {"postgres": {"id": None, "name": "GTM v2 run log (Postgres)"}},
 }
 EXPORT_MARKER = "// ---------------------------------------------------------------- exports (not pasted into n8n)"
@@ -104,24 +140,24 @@ return [{
     run_id: runId,
     proposals,
     flagged: proposals.filter((p) => p.needs_review).length,
-    form_fields: buildReviewForm(pb, proposals, { run_id: runId, model, quarantined, leads }),
+    form_fields: buildReviewForm(pb, proposals, { run_id: runId, model, quarantined, leads, target: '__TARGET__' }),
   },
 }];
 """,
     "Apply Decisions": """
 // ===== n8n node: Apply Decisions (run once for all items) =====
-// Turns the person's choices into decisions, stamps, and HubSpot inputs for approved or changed rows only.
+// Turns the person's choices into decisions, stamps, and __LABEL__ records for approved or changed rows only.
 const pb = parsePlaybook($('Playbook Text').first().json.data);
 const review = $('Build Review').first().json;
 const leads = {};
 for (const i of $('Build Requests').all()) leads[i.json.decision_id] = i.json.lead;
-const out = applyDecisions(pb, review.proposals, leads, $input.first().json, { decided_at: new Date().toISOString() });
+const out = applyDecisions(pb, review.proposals, leads, $input.first().json, { decided_at: new Date().toISOString(), target: '__TARGET__' });
 return [{ json: Object.assign({ run_id: review.run_id }, out) }];
 """,
     "Build Decision Log": """
 // ===== n8n node: Build Decision Log (run once for all items) =====
 const applied = $('Apply Decisions').first().json;
-const wrote = applied.hubspot.inputs.length > 0;
+const wrote = applied.write.count > 0;
 const rows = decisionLogRows(applied.decisions, wrote ? $input.first().json : null);
 return [{ json: { run_id: applied.run_id, rows, summary: summariseDecisions(rows) } }];
 """,
@@ -136,11 +172,11 @@ const cost = s.total_cost_usd === undefined || s.total_cost_usd === null
   ? 'not found in the run log'
   : `US$${Number(s.total_cost_usd).toFixed(6)} for ${s.proposals} AI proposals, US$${Number(s.cost_per_decision_usd).toFixed(6)} each`;
 const message = [
-  `Written to HubSpot: ${m.written} (approved ${m.approved}, changed ${m.changed}).`,
+  `Written to __LABEL__: ${m.written} (approved ${m.approved}, changed ${m.changed}).`,
   `Rejected, not written: ${m.rejected}.`,
   m.failed ? `Failed to write: ${m.failed}; the run log has the error.` : 'No write failed.',
   `AI cost: ${cost}.`,
-  `Run ${d.run_id}. Every HubSpot record written carries a stamp; look it up in gtm_v2.decision_record.`,
+  `Run ${d.run_id}. Every __LABEL__ record written carries a stamp; look it up in gtm_v2.decision_record.`,
 ].join(' ');
 return [{ json: { title: m.failed ? 'Routing run finished with failures' : 'Routing run complete', message } }];
 """
@@ -173,7 +209,34 @@ def postgres_node(name: str, position: list[int], query: str, replacement: str) 
     }
 
 
-def build() -> dict:
+def fill(js: str, target: str) -> str:
+    return js.replace("__TARGET__", target).replace("__LABEL__", TARGETS[target]["label"])
+
+
+def write_node(target: str, position: list[int], salesforce_host: str = SALESFORCE_HOST_PLACEHOLDER) -> dict:
+    """The one node that differs between the targets: the CRM's batch upsert, after the review page."""
+    t = TARGETS[target]
+    common = {"id": node_id(t["write_node"]), "name": t["write_node"], "type": "n8n-nodes-base.httpRequest",
+              "typeVersion": 4.2, "position": position, "credentials": copy.deepcopy(CREDENTIALS[target]),
+              "onError": "continueRegularOutput"}
+    options = {"response": {"response": {"fullResponse": True, "neverError": True}}, "timeout": 60000}
+    body = "={{ JSON.stringify($json.write.body) }}"
+    if target == "salesforce":
+        # sObject Collections upsert on the external ID: up to 200 Accounts, each saved or refused
+        # on its own (allOrNone false), answered in the order sent. n8n fetches and renews the
+        # client-credentials token itself.
+        url = f"https://{salesforce_host}/services/data/{SALESFORCE_API_VERSION}/composite/sobjects/Account/Clay_Domain_Key__c"
+        params = {"method": "PATCH", "url": url, "authentication": "genericCredentialType", "genericAuthType": "oAuth2Api",
+                  "sendBody": True, "specifyBody": "json", "jsonBody": body, "options": options}
+    else:
+        params = {"method": "POST", "url": "https://api.hubapi.com/crm/v3/objects/companies/batch/upsert",
+                  "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
+                  "sendBody": True, "specifyBody": "json", "jsonBody": body, "options": options}
+    return dict(common, parameters=params)
+
+
+def build(target: str = "hubspot", salesforce_host: str = SALESFORCE_HOST_PLACEHOLDER) -> dict:
+    t = TARGETS[target]
     v1 = json.loads(V1.read_text(encoding="utf-8"))
     v1_nodes = {n["name"]: n for n in v1["nodes"]}
     engine = engine_source()
@@ -191,10 +254,10 @@ def build() -> dict:
     upload.pop("webhookId", None)
     upload["parameters"] = {
         "formTitle": "GTM pipeline v2: route leads",
-        "formDescription": "Upload a company CSV with an enquiry column. The data rules run first, then the AI proposes a route for each clean row. You approve, change or reject every proposal on the next page. Nothing is written to HubSpot before you do.",
+        "formDescription": "Upload a company CSV with an enquiry column. The data rules run first, then the AI proposes a route for each clean row. You approve, change or reject every proposal on the next page. Nothing is written to " + t["label"] + " before you do.",
         "formFields": {"values": [{"fieldLabel": "CSV File", "fieldName": "CSV_File", "fieldType": "file",
                                    "requiredField": True, "acceptFileTypes": ".csv"}]},
-        "options": {"path": FORM_PATH, "buttonLabel": "Run the rules and the AI step"},
+        "options": {"path": t["form_path"], "buttonLabel": "Run the rules and the AI step"},
     }
     nodes = [
         upload,
@@ -233,12 +296,12 @@ def build() -> dict:
             },
         },
         code_node("Check Proposal", [2200, 60], engine + ENTRIES["Check Proposal"], each=True),
-        code_node("Build Review", [1760, 340], engine + ENTRIES["Build Review"]),
+        code_node("Build Review", [1760, 340], engine + fill(ENTRIES["Build Review"], target)),
         postgres_node("Log Proposals", [1980, 340], "select gtm_v2.log_proposals($1::jsonb) as logged;",
                       "={{ JSON.stringify($json.proposals) }}"),
         {
             "id": node_id("Review Page"), "name": "Review Page", "type": "n8n-nodes-base.form", "typeVersion": 2.5,
-            "position": [2200, 340], "webhookId": node_id("Review Page webhook"),
+            "position": [2200, 340], "webhookId": node_id(t["webhook_prefix"] + "Review Page webhook"),
             "parameters": {
                 "operation": "page", "defineForm": "json",
                 "jsonOutput": "={{ $('Build Review').first().json.form_fields }}",
@@ -247,25 +310,15 @@ def build() -> dict:
                             "buttonLabel": "Submit decisions"},
             },
         },
-        code_node("Apply Decisions", [2420, 340], engine + ENTRIES["Apply Decisions"]),
+        code_node("Apply Decisions", [2420, 340], engine + fill(ENTRIES["Apply Decisions"], target)),
         {
             "id": node_id("Anything to Write?"), "name": "Anything to Write?", "type": "n8n-nodes-base.if",
             "typeVersion": 2, "position": [2640, 340],
             "parameters": {"conditions": {"options": {"caseSensitive": True, "leftValue": ""}, "combinator": "and", "conditions": [{
-                "id": node_id("Anything to Write? condition"), "leftValue": "={{ $json.hubspot.inputs.length }}",
+                "id": node_id("Anything to Write? condition"), "leftValue": "={{ $json.write.count }}",
                 "rightValue": 0, "operator": {"type": "number", "operation": "gt"}}]}, "options": {}},
         },
-        {
-            "id": node_id("HubSpot Batch Upsert"), "name": "HubSpot Batch Upsert", "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.2, "position": [2860, 240], "credentials": copy.deepcopy(CREDENTIALS["hubspot"]),
-            "onError": "continueRegularOutput",
-            "parameters": {
-                "method": "POST", "url": "https://api.hubapi.com/crm/v3/objects/companies/batch/upsert",
-                "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
-                "sendBody": True, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ inputs: $json.hubspot.inputs }) }}",
-                "options": {"response": {"response": {"fullResponse": True, "neverError": True}}, "timeout": 60000},
-            },
-        },
+        write_node(target, [2860, 240], salesforce_host),
         code_node("Build Decision Log", [3080, 340], engine + ENTRIES["Build Decision Log"]),
         postgres_node("Log Decisions", [3300, 340], "select gtm_v2.log_decisions($1::jsonb) as logged;",
                       "={{ JSON.stringify($json.rows) }}"),
@@ -273,10 +326,10 @@ def build() -> dict:
                       "select run_id, proposals, flagged, approved, changed, rejected, written, failed, input_tokens, "
                       "output_tokens, total_cost_usd, cost_per_decision_usd, avg_latency_ms from gtm_v2.run_summary where run_id = $1;",
                       "={{ $('Build Decision Log').first().json.run_id }}"),
-        code_node("Done Message", [3740, 340], DONE_MESSAGE),
+        code_node("Done Message", [3740, 340], fill(DONE_MESSAGE, target)),
         {
             "id": node_id("Done"), "name": "Done", "type": "n8n-nodes-base.form", "typeVersion": 2.5,
-            "position": [3960, 340], "webhookId": node_id("Done webhook"),
+            "position": [3960, 340], "webhookId": node_id(t["webhook_prefix"] + "Done webhook"),
             "parameters": {"operation": "completion", "respondWith": "text",
                            "completionTitle": "={{ $json.title }}", "completionMessage": "={{ $json.message }}", "options": {}},
         },
@@ -302,38 +355,56 @@ def build() -> dict:
         "Log Proposals": {"main": link("Review Page")},
         "Review Page": {"main": link("Apply Decisions")},
         "Apply Decisions": {"main": link("Anything to Write?")},
-        "Anything to Write?": {"main": link("HubSpot Batch Upsert") + link("Build Decision Log")},
-        "HubSpot Batch Upsert": {"main": link("Build Decision Log")},
+        "Anything to Write?": {"main": link(t["write_node"]) + link("Build Decision Log")},
+        t["write_node"]: {"main": link("Build Decision Log")},
         "Build Decision Log": {"main": link("Log Decisions")},
         "Log Decisions": {"main": link("Read Run Summary")},
         "Read Run Summary": {"main": link("Done Message")},
         "Done Message": {"main": link("Done")},
     }
-    return {"name": NAME, "nodes": nodes, "connections": connections, "settings": {"executionOrder": "v1"}}
+    return {"name": t["name"], "nodes": nodes, "connections": connections, "settings": {"executionOrder": "v1"}}
 
 
 def render(wf: dict) -> str:
     return json.dumps(wf, indent=2, ensure_ascii=False) + "\n"
 
 
+def salesforce_host_from_env() -> str:
+    from dotenv import dotenv_values
+
+    host = (dotenv_values(ENV).get("SALESFORCE_DOMAIN") if ENV.exists() else None) or ""
+    host = host.strip().removeprefix("https://").rstrip("/").lower()
+    if not re.match(SALESFORCE_HOST_RE, host):
+        raise ValueError("SALESFORCE_DOMAIN in .env must be the org's My Domain host, ending in .my.salesforce.com")
+    return host
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--check", action="store_true", help="exit 1 if n8n/workflow-v2.json is out of date")
+    ap.add_argument("--check", action="store_true", help="exit 1 if either workflow file is out of date")
+    ap.add_argument("--local", action="store_true", help="also write the Salesforce copy with the org's host from .env (ignored by git)")
     args = ap.parse_args(argv)
     try:
-        text = render(build())
+        texts = {target: render(build(target)) for target in TARGETS}
+        local = render(build("salesforce", salesforce_host_from_env())) if args.local else None
     except (OSError, ValueError, KeyError) as e:
         print(f"CANNOT BUILD {e}")
         return 2
     if args.check:
-        current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
-        if current != text:
-            print("OUT OF DATE n8n/workflow-v2.json: run python scripts/build_n8n_routing.py")
+        stale = [t["output"].relative_to(REPO) for target, t in TARGETS.items()
+                 if (t["output"].read_text(encoding="utf-8") if t["output"].exists() else "") != texts[target]]
+        for path in stale:
+            print(f"OUT OF DATE {path}: run python scripts/build_n8n_routing.py")
+        if stale:
             return 1
-        print("n8n/workflow-v2.json is up to date.")
+        print("Both workflow files are up to date.")
         return 0
-    OUTPUT.write_text(text, encoding="utf-8")
-    print(f"Wrote {OUTPUT.relative_to(REPO)}: {len(json.loads(text)['nodes'])} nodes.")
+    for target, t in TARGETS.items():
+        t["output"].write_text(texts[target], encoding="utf-8")
+        print(f"Wrote {t['output'].relative_to(REPO)}: {len(json.loads(texts[target])['nodes'])} nodes.")
+    if local is not None:
+        TARGETS["salesforce"]["local"].write_text(local, encoding="utf-8")
+        print(f"Wrote {TARGETS['salesforce']['local'].relative_to(REPO)} with the org's host (ignored by git; import this one).")
     return 0
 
 

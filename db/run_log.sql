@@ -1,4 +1,4 @@
--- GTM pipeline v2, chapter 2: the run log.
+-- GTM pipeline v2, chapters 2 and 4: the run log.
 --
 -- One row per AI proposal, one row per person's decision, and views that join them and
 -- work out cost from the price table. Applied by scripts/setup_run_log.py as the database
@@ -78,6 +78,16 @@ create table if not exists gtm_v2.decisions (
   check (action = 'rejected' or (chosen_route is not null and chosen_priority is not null))
 );
 create index if not exists decisions_run_idx on gtm_v2.decisions (run_id);
+
+-- Chapter 4: the same log serves both CRM targets. A decision names the one it was written to.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'decisions_crm_target_check'
+                 and conrelid = 'gtm_v2.decisions'::regclass) then
+    alter table gtm_v2.decisions add constraint decisions_crm_target_check
+      check (crm_target in ('hubspot', 'salesforce'));
+  end if;
+end $$;
 
 -- Arrays from the engine are stored as text joined with |, like the version 1 reason codes.
 create or replace function gtm_v2.join_list(items jsonb) returns text
@@ -187,7 +197,8 @@ select
   round(avg(cost_usd), 8) as cost_per_decision_usd,
   round(avg(latency_ms)) as avg_latency_ms,
   min(proposed_at) as started_at,
-  max(decided_at) as last_decided_at
+  max(decided_at) as last_decided_at,
+  string_agg(distinct crm_target, ', ') filter (where crm_write_status <> 'not_written') as crm_targets
 from gtm_v2.decision_record
 group by run_id;
 

@@ -1,5 +1,7 @@
-"""The chapter 2 n8n workflow (n8n/workflow-v2.json): how it is built, what it can reach, and
-what its Code nodes do when run in order on the demo file (tests/n8n_harness.js)."""
+"""The routing workflows: chapter 2's (n8n/workflow-v2.json, HubSpot) and chapter 4's
+(n8n/workflow-v2-salesforce.json): how they are built, what they can reach, that they differ
+only in the write step, and what their Code nodes do when run in order on the demo file
+(tests/n8n_harness.js)."""
 import csv
 import json
 import re
@@ -16,6 +18,9 @@ sys.path.insert(0, str(REPO / "scripts"))
 import build_n8n_routing as build  # noqa: E402
 
 WF = json.loads((REPO / "n8n/workflow-v2.json").read_text(encoding="utf-8"))
+WF_SF = json.loads((REPO / "n8n/workflow-v2-salesforce.json").read_text(encoding="utf-8"))
+SF_NODES = {n["name"]: n for n in WF_SF["nodes"]}
+SETUP = json.loads((REPO / "salesforce/setup.json").read_text(encoding="utf-8"))
 V1 = json.loads((REPO / "n8n/workflow.json").read_text(encoding="utf-8"))
 NODES = {n["name"]: n for n in WF["nodes"]}
 V1_NODES = {n["name"]: n for n in V1["nodes"]}
@@ -33,30 +38,40 @@ ALLOWED_TYPES = {
 
 def test_file_is_made_by_the_build_script_and_is_up_to_date():
     assert build.render(build.build()) == (REPO / "n8n/workflow-v2.json").read_text(encoding="utf-8")
-    assert set(WF) == {"name", "nodes", "connections", "settings"}
-    assert WF["settings"] == {"executionOrder": "v1"}
+    assert build.render(build.build("salesforce")) == (REPO / "n8n/workflow-v2-salesforce.json").read_text(encoding="utf-8")
+    for wf in (WF, WF_SF):
+        assert set(wf) == {"name", "nodes", "connections", "settings"}
+        assert wf["settings"] == {"executionOrder": "v1"}
+    assert build.main(["--check"]) == 0
 
 
-def test_nothing_in_the_workflow_can_send_to_anyone():
-    """No email, chat or outbound webhook node; HTTP only to Claude and HubSpot."""
-    assert {n["type"] for n in WF["nodes"]} <= ALLOWED_TYPES
-    hosts = {urlsplit(n["parameters"]["url"]).hostname for n in WF["nodes"] if n["type"] == "n8n-nodes-base.httpRequest"}
-    assert hosts == {"api.anthropic.com", "api.hubapi.com"}
+@pytest.mark.parametrize("wf, crm_host", [(WF, "api.hubapi.com"), (WF_SF, build.SALESFORCE_HOST_PLACEHOLDER.lower())])
+def test_nothing_in_the_workflow_can_send_to_anyone(wf, crm_host):
+    """No email, chat or outbound webhook node; HTTP only to Claude and the one CRM."""
+    assert {n["type"] for n in wf["nodes"]} <= ALLOWED_TYPES
+    hosts = {urlsplit(n["parameters"]["url"]).hostname for n in wf["nodes"] if n["type"] == "n8n-nodes-base.httpRequest"}
+    assert hosts == {"api.anthropic.com", crm_host}
 
 
-def test_credentials_are_named_with_no_instance_id():
+def credentials_of(wf):
     found = {}
-    for n in WF["nodes"]:
+    for n in wf["nodes"]:
         for cred_type, cred in (n.get("credentials") or {}).items():
             assert cred["id"] is None, n["name"]
             found[n["name"]] = (cred_type, cred["name"])
-    assert found == {
+    return found
+
+
+def test_credentials_are_named_with_no_instance_id():
+    shared = {
         "Claude Routing Step": ("httpHeaderAuth", "Claude key gtm-pipeline-v2"),
-        "HubSpot Batch Upsert": ("httpHeaderAuth", "HubSpot Service Key"),
         "Log Proposals": ("postgres", "GTM v2 run log (Postgres)"),
         "Log Decisions": ("postgres", "GTM v2 run log (Postgres)"),
         "Read Run Summary": ("postgres", "GTM v2 run log (Postgres)"),
     }
+    assert credentials_of(WF) == {**shared, "HubSpot Batch Upsert": ("httpHeaderAuth", "HubSpot Service Key")}
+    # Salesforce: n8n's general OAuth2 login (client credentials), named as in salesforce/setup.json.
+    assert credentials_of(WF_SF) == {**shared, "Salesforce Upsert": ("oAuth2Api", SETUP["n8n_credential"]["name"])}
 
 
 def test_version_1_nodes_are_unchanged():
@@ -65,13 +80,68 @@ def test_version_1_nodes_are_unchanged():
         assert NODES[name]["type"] == V1_NODES[name]["type"], name
 
 
-def test_every_engine_node_runs_the_same_tested_engine():
+@pytest.mark.parametrize("wf", [WF, WF_SF])
+def test_every_engine_node_runs_the_same_tested_engine(wf):
     engine = build.engine_source()
-    with_engine = [n for n in WF["nodes"] if n["type"] == "n8n-nodes-base.code" and "function parsePlaybook" in n["parameters"]["jsCode"]]
+    with_engine = [n for n in wf["nodes"] if n["type"] == "n8n-nodes-base.code" and "function parsePlaybook" in n["parameters"]["jsCode"]]
     assert {n["name"] for n in with_engine} == {"Build Requests", "Check Proposal", "Build Review", "Apply Decisions", "Build Decision Log"}
     for n in with_engine:
         assert n["parameters"]["jsCode"].startswith(engine), n["name"]
-    assert "module.exports" not in json.dumps(WF)
+    assert "module.exports" not in json.dumps(wf)
+
+
+def test_the_salesforce_workflow_differs_from_hubspot_only_in_the_write_step():
+    """Chapter 4's claim, as a test: the same engine, the same rules, AI step, review and log.
+    Take out the write node, swap the words that name the target, and the two files are equal."""
+    hs_t, sf_t = build.TARGETS["hubspot"], build.TARGETS["salesforce"]
+
+    engine = build.engine_source()  # the same in both; checked by the test above
+
+    def without_write(wf, write_node):
+        nodes = []
+        for n in json.loads(json.dumps(wf["nodes"])):
+            if n["name"] == write_node:
+                continue
+            code = n["parameters"].get("jsCode", "")
+            if code.startswith(engine):
+                n["parameters"]["jsCode"] = "<engine>" + code[len(engine):]
+            nodes.append(n)
+        return {**wf, "nodes": nodes}
+
+    text = json.dumps(without_write(WF_SF, sf_t["write_node"]), sort_keys=True)
+    for a, b in ((sf_t["name"], hs_t["name"]), (sf_t["form_path"], hs_t["form_path"]),
+                 (build.node_id("salesforce Review Page webhook"), build.node_id("Review Page webhook")),
+                 (build.node_id("salesforce Done webhook"), build.node_id("Done webhook")),
+                 (sf_t["write_node"], hs_t["write_node"]), ("'salesforce'", "'hubspot'"), ("Salesforce", "HubSpot")):
+        text = text.replace(a, b)
+    assert json.loads(text) == without_write(WF, hs_t["write_node"])
+    assert set(NODES) - {hs_t["write_node"]} == set(SF_NODES) - {sf_t["write_node"]}
+
+
+def test_the_salesforce_write_is_an_external_id_upsert_after_the_review():
+    w = SF_NODES["Salesforce Upsert"]
+    p = w["parameters"]
+    assert p["method"] == "PATCH" and p["genericAuthType"] == "oAuth2Api"
+    url = urlsplit(p["url"])
+    assert url.scheme == "https" and url.hostname == build.SALESFORCE_HOST_PLACEHOLDER.lower()
+    assert url.path == f"/services/data/{SETUP['api_version']}/composite/sobjects/{SETUP['object']}/{SETUP['external_id_field']}"
+    assert p["jsonBody"] == "={{ JSON.stringify($json.write.body) }}"
+    assert p["options"]["response"]["response"] == {"fullResponse": True, "neverError": True}
+    assert w["onError"] == "continueRegularOutput" and "retryOnFail" not in w
+    assert "target: 'salesforce'" in SF_NODES["Apply Decisions"]["parameters"]["jsCode"]
+    assert "target: 'salesforce'" in SF_NODES["Build Review"]["parameters"]["jsCode"]
+    assert SF_NODES["Upload CSV"]["parameters"]["options"]["path"] == "gtm-v2-route-leads-salesforce"
+    assert "webhookId" not in SF_NODES["Upload CSV"]
+    assert SF_NODES["Review Page"]["webhookId"] != NODES["Review Page"]["webhookId"]
+
+
+def test_the_local_copy_fills_in_only_the_host_and_is_ignored_by_git():
+    host = "acme-dev-ed.develop.my.salesforce.com"
+    local = build.build("salesforce", host)
+    assert json.dumps(local).replace(host, build.SALESFORCE_HOST_PLACEHOLDER) == json.dumps(build.build("salesforce"))
+    ignored = subprocess.run(["git", "check-ignore", "-q", "n8n/workflow-v2-salesforce.local.json"], cwd=REPO, check=False)
+    assert ignored.returncode == 0
+    assert re.match(build.SALESFORCE_HOST_RE, host) and not re.match(build.SALESFORCE_HOST_RE, "evil.example/x.my.salesforce.com")
 
 
 def test_routing_rules_come_only_from_the_playbook_file():
@@ -95,11 +165,11 @@ def test_n8n_is_published_on_this_mac_only():
     assert ports == ["-p 127.0.0.1:5678:5678 \\"]
 
 
-def reachable(start, skip):
+def reachable(start, skip, wf=WF):
     seen, todo = set(), [start]
     while todo:
         name = todo.pop()
-        for branch in WF["connections"].get(name, {}).get("main", []):
+        for branch in wf["connections"].get(name, {}).get("main", []):
             for link in branch:
                 if link["node"] not in seen and link["node"] != skip:
                     seen.add(link["node"])
@@ -107,10 +177,11 @@ def reachable(start, skip):
     return seen
 
 
-def test_no_path_reaches_hubspot_without_the_review_page():
-    assert "HubSpot Batch Upsert" in reachable("Upload CSV", skip=None)
-    assert "HubSpot Batch Upsert" not in reachable("Upload CSV", skip="Review Page")
-    assert "Log Proposals" not in reachable("Review Page", skip=None)  # proposals are logged before the review
+@pytest.mark.parametrize("wf, write_node", [(WF, "HubSpot Batch Upsert"), (WF_SF, "Salesforce Upsert")])
+def test_no_path_reaches_the_crm_without_the_review_page(wf, write_node):
+    assert write_node in reachable("Upload CSV", skip=None, wf=wf)
+    assert write_node not in reachable("Upload CSV", skip="Review Page", wf=wf)
+    assert "Log Proposals" not in reachable("Review Page", skip=None, wf=wf)  # proposals are logged before the review
 
 
 def test_loop_and_form_wiring():
@@ -146,8 +217,8 @@ def fake_answer(lead_id):
                      "content": [{"type": "text", "text": json.dumps(body)}], "usage": {"input_tokens": 3400, "output_tokens": 100}}}
 
 
-def harness(upsert="ok"):
-    payload = {"workflow": str(REPO / "n8n/workflow-v2.json"), "rows": RUN_ROWS, "playbook": PLAYBOOK,
+def harness(upsert="ok", workflow="n8n/workflow-v2.json"):
+    payload = {"workflow": str(REPO / workflow), "rows": RUN_ROWS, "playbook": PLAYBOOK,
                "answers": {r["lead_id"]: fake_answer(r["lead_id"]) for r in RUN_ROWS if r["lead_id"] in ENQUIRIES},
                "execution_id": "501", "upsert": upsert}
     out = subprocess.run(["node", str(REPO / "tests/n8n_harness.js")], input=json.dumps(payload),
@@ -181,7 +252,7 @@ def test_demo_file_runs_through_every_code_node():
     applied = r["applied"]
     actions = [d["action"] for d in applied["decisions"]]
     assert actions.count("changed") == 1 and actions.count("rejected") == len(flagged)
-    writes = applied["hubspot"]["inputs"]
+    writes = applied["write"]["body"]["inputs"]
     assert len(writes) == 12 - len(flagged)
     assert all(w["properties"]["gtm_decision_stamp"].startswith("gtm-v2 D-n8n501-") for w in writes)
     assert all(" by reviewer-01 | " in w["properties"]["gtm_decision_stamp"] for w in writes)
@@ -196,7 +267,7 @@ def test_demo_file_runs_through_every_code_node():
 @needs_node
 def test_a_failed_hubspot_write_is_logged_as_failed():
     r = harness(upsert="fail")
-    assert r["log"]["summary"]["failed"] == len(r["applied"]["hubspot"]["inputs"]) > 0
+    assert r["log"]["summary"]["failed"] == r["applied"]["write"]["count"] > 0
     assert all("Property values were not valid" in x["crm_error"] for x in r["log"]["rows"] if x["action"] != "rejected")
     assert r["done"]["title"] == "Routing run finished with failures"
 
@@ -213,3 +284,41 @@ def test_postgres_nodes_read_fields_the_code_nodes_produce():
         assert all(key in p for p in r["proposals"]) and key in sql
     for key in ("action", "chosen_route", "approver", "stamp", "crm_write_status"):
         assert all(key in x for x in r["log"]["rows"]) and key in sql
+
+
+SF = "n8n/workflow-v2-salesforce.json"
+
+
+@needs_node
+def test_demo_file_runs_through_the_salesforce_workflow():
+    """The same demo file and the same reviewer: the same decisions, now as Salesforce Accounts."""
+    hs, sf = harness(), harness(workflow=SF)
+    assert sf["writeNode"] == "Salesforce Upsert" and hs["writeNode"] == "HubSpot Batch Upsert"
+    assert [p["route"] for p in sf["proposals"]] == [p["route"] for p in hs["proposals"]]
+    strip = lambda ds: [{k: v for k, v in d.items() if k != "crm_target"} for d in ds]  # noqa: E731
+    assert strip(sf["applied"]["decisions"]) == strip(hs["applied"]["decisions"])
+    records = sf["applied"]["write"]["body"]["records"]
+    assert len(records) == len(hs["applied"]["write"]["body"]["inputs"]) == sf["applied"]["write"]["count"]
+    assert all(r["GTM_Decision_Stamp__c"].startswith("gtm-v2 D-n8n501-") and " by reviewer-01 | " in r["GTM_Decision_Stamp__c"] for r in records)
+    assert all(r["attributes"] == {"type": "Account"} and r["Clay_Domain_Key__c"] for r in records)
+    log = sf["log"]
+    assert log["summary"]["written"] == len(records) and log["summary"]["failed"] == 0
+    assert all(row["crm_record_id"].startswith("001") and row["crm_target"] == "salesforce" for row in log["rows"] if row["action"] != "rejected")
+    assert f"Written to Salesforce: {len(records)}" in sf["done"]["message"] and "Every Salesforce record written" in sf["done"]["message"]
+    assert "Nothing is written to Salesforce until you submit" in sf["review"]["form_fields"][0]["html"]
+
+
+@needs_node
+def test_a_refused_salesforce_record_fails_only_its_row():
+    r = harness(upsert="partial", workflow=SF)
+    written = [x for x in r["log"]["rows"] if x["action"] != "rejected"]
+    assert r["log"]["summary"]["failed"] == 1 and r["log"]["summary"]["written"] == len(written) - 1
+    assert written[0]["crm_error"].startswith("INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST")
+    assert r["done"]["title"] == "Routing run finished with failures"
+
+
+@needs_node
+def test_a_failed_salesforce_request_is_logged_as_failed():
+    r = harness(upsert="fail", workflow=SF)
+    assert r["log"]["summary"]["failed"] == r["applied"]["write"]["count"] > 0
+    assert all("INVALID_FIELD: No such column" in x["crm_error"] for x in r["log"]["rows"] if x["action"] != "rejected")

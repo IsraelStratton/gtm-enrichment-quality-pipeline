@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Check a finished routing run against its log and, optionally, HubSpot.
+"""Check a finished routing run against its log and, optionally, the CRM it wrote to.
 
   python scripts/check_run.py --latest                    # the newest run in the log
   python scripts/check_run.py --run n8n-123 --hubspot     # A1.1: count the writes, find a stamp on each in HubSpot
+  python scripts/check_run.py --latest --salesforce       # the same, for a run that wrote to Salesforce (chapter 4)
   python scripts/check_run.py --decision D-n8n123-04      # A1.2: one query from a stamp to its full record
   python scripts/check_run.py --stamp "gtm-v2 D-n8n123-04 | ..."
 
@@ -11,10 +12,12 @@ What it checks for a run:
   - every decision that led to a write carries a stamp naming the decision, model, playbook,
     action, reviewer and time, and every rejected one has none;
   - a changed row keeps both what the AI proposed and what the person chose (A1.3);
-  - with --hubspot: each written company in HubSpot carries the same stamp, route, priority
-    and status as the log, and no rejected row carries this run's stamp.
+  - with --hubspot or --salesforce: the run wrote to that CRM; each written company (or
+    Account) carries the same stamp, route, priority and status as the log; and no rejected
+    row carries this run's stamp.
 
-It reads the log through the pipeline login (views only) and HubSpot with the read scope.
+It reads the log through the pipeline login (views only), HubSpot with the read scope, and
+Salesforce through the workflow's own login (salesforce_client.py), reading only.
 Exit codes: 0 every check passed, 1 a check failed, 2 could not run.
 """
 from __future__ import annotations
@@ -34,6 +37,9 @@ REPO = Path(__file__).resolve().parents[1]
 STAMP = re.compile(r"^gtm-v2 (?P<decision>D-[A-Za-z0-9]+-\d{2,}) \| (?P<model>[a-z0-9-]+) \| (?P<playbook>[a-z0-9-]+)@(?P<version>\d+\.\d+\.\d+) \| "
                    r"(?P<action>approved|changed) by (?P<approver>.+) \| (?P<at>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)$")
 HUBSPOT_PROPS = ["name", "clay_domain_key", "gtm_route", "gtm_priority", "gtm_routing_status", "gtm_routing_confidence", "gtm_decision_stamp"]
+SALESFORCE_FIELDS = ["Name", "Clay_Domain_Key__c", "GTM_Route__c", "GTM_Priority__c", "GTM_Routing_Status__c",
+                     "GTM_Routing_Confidence__c", "GTM_Decision_Stamp__c"]
+LABELS = {"hubspot": "HubSpot", "salesforce": "Salesforce"}
 
 
 def rows(conn, sql: str, args: tuple) -> list[dict]:
@@ -65,8 +71,45 @@ def check_log(records: list[dict]) -> list[tuple[bool, str]]:
     out.append((len(both) == len(changed), f"{len(changed)} changed rows keep both values"
                 + "".join(f"; {r['lead_id']}: AI {r['proposed_route']} {r['proposed_priority']}, person {r['chosen_route']} {r['chosen_priority']}" for r in changed)))
     failed = [r for r in writes if r["crm_write_status"] != "written"]
-    out.append((not failed, f"{len(writes) - len(failed)} of {len(writes)} writes reached HubSpot"
+    targets = sorted({r.get("crm_target") or "hubspot" for r in writes}) or ["hubspot"]
+    out.append((not failed, f"{len(writes) - len(failed)} of {len(writes)} writes reached {' and '.join(LABELS.get(t, t) for t in targets)}"
                 + "".join(f"; {r['lead_id']}: {r['crm_error']}" for r in failed)))
+    return out
+
+
+def check_target(records: list[dict], target: str) -> list[tuple[bool, str]]:
+    writes = [r for r in records if r["action"] in ("approved", "changed")]
+    wrong = sorted({r.get("crm_target") or "hubspot" for r in writes} - {target})
+    return [(not wrong, f"every write in this run went to {LABELS[target]}" + (f" (but some went to {', '.join(wrong)})" if wrong else ""))]
+
+
+def check_salesforce(records: list[dict], client=None) -> list[tuple[bool, str]]:
+    """The same checks as check_hubspot, on Accounts. client: a SalesforceClient (tests pass a fake)."""
+    if client is None:
+        from salesforce_client import SalesforceClient
+
+        client = SalesforceClient.from_env()
+    out = []
+    written = [r for r in records if r["crm_write_status"] == "written"]
+    stamped = 0
+    for r in written:
+        rec = client.account(r["crm_record_id"], SALESFORCE_FIELDS) or {}
+        same = (rec.get("GTM_Decision_Stamp__c") == r["stamp"] and rec.get("GTM_Route__c") == r["chosen_route"]
+                and rec.get("GTM_Priority__c") == r["chosen_priority"] and rec.get("GTM_Routing_Status__c") == r["action"]
+                and rec.get("Clay_Domain_Key__c") == r["domain"])
+        stamped += int(same)
+        if not same:
+            out.append((False, f"{r['lead_id']} (Salesforce {r['crm_record_id']}): the Account does not match the log"))
+    out.append((stamped == len(written), f"Salesforce: {stamped} of {len(written)} written Accounts carry the logged stamp, route, priority and status"))
+    leaked = 0
+    for r in (x for x in records if x["action"] == "rejected"):
+        rec = client.account_by_key(r["domain"], SALESFORCE_FIELDS)
+        if rec is None:
+            continue  # never in Salesforce at all
+        if r["decision_id"] in (rec.get("GTM_Decision_Stamp__c") or ""):
+            leaked += 1
+            out.append((False, f"{r['lead_id']}: rejected, but Salesforce carries its stamp"))
+    out.append((leaked == 0, "Salesforce: no rejected row carries this run's stamp"))
     return out
 
 
@@ -110,8 +153,10 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument("--run", help="run id, such as n8n-123 or py-20261123T054542Z")
     group.add_argument("--latest", action="store_true", help="the newest run in the log")
     group.add_argument("--decision", help="decision id from a stamp, such as D-n8n123-04")
-    group.add_argument("--stamp", help="a whole stamp copied from a HubSpot record")
-    ap.add_argument("--hubspot", action="store_true", help="also read each written company back from HubSpot")
+    group.add_argument("--stamp", help="a whole stamp copied from a HubSpot company or a Salesforce Account")
+    crm = ap.add_mutually_exclusive_group()
+    crm.add_argument("--hubspot", action="store_true", help="also read each written company back from HubSpot")
+    crm.add_argument("--salesforce", action="store_true", help="also read each written Account back from Salesforce")
     args = ap.parse_args(argv)
     load_dotenv(REPO / ".env")
     password = os.environ.get(PASSWORD_KEY, "")
@@ -151,10 +196,18 @@ def main(argv: list[str] | None = None) -> int:
           f"(US${s['cost_per_decision_usd']} a decision), models {s['models']}, playbook {s['playbooks']}.")
     results = check_log(records)
     if args.hubspot:
+        results += check_target(records, "hubspot")
         try:
             results += check_hubspot(records)
         except Exception as e:
             print(f"CANNOT RUN HubSpot: {type(e).__name__}: {e}")
+            return 2
+    if args.salesforce:
+        results += check_target(records, "salesforce")
+        try:
+            results += check_salesforce(records)
+        except Exception as e:  # SalesforceError and ConfigError messages carry no value from .env
+            print(f"CANNOT RUN Salesforce: {type(e).__name__}: {e}")
             return 2
     for ok, text in results:
         print(f"{'PASS' if ok else 'FAIL'} {text}")
