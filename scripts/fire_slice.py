@@ -13,9 +13,10 @@ adds its own received_at when it writes the tracking row.
 Webhook URLs for Make and Zapier come from .env (SLICE_URL_MAKE, SLICE_URL_ZAPIER)
 or --url. They are masked in the output and never committed.
 
-Each webhook needs a key. The script sends it from .env (SLICE_KEY_N8N in the
-X-Slice-Key header, SLICE_KEY_MAKE in Make's x-make-apikey header) and never
-prints it. --no-key sends without one, to prove the webhook refuses the call.
+Each webhook needs a key. The script sends it from .env and never prints it:
+SLICE_KEY_N8N and SLICE_KEY_ZAPIER in the X-Slice-Key header, SLICE_KEY_MAKE in
+Make's x-make-apikey header. --no-key sends without one, to prove the call is
+refused (n8n 403, Make 401) or, for Zapier, stopped by the Zap's filter.
 
 Exit codes: 0 sent and accepted, 1 HTTP or network failure, 2 configuration error.
 """
@@ -40,8 +41,8 @@ ENV_URL = {"n8n": "SLICE_URL_N8N", "make": "SLICE_URL_MAKE", "zapier": "SLICE_UR
 N8N_DEFAULT_BASE = "http://localhost:5678"
 N8N_PATH = "gtm-v2-approved-lead"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
-KEY_ENV = {"n8n": "SLICE_KEY_N8N", "make": "SLICE_KEY_MAKE"}
-KEY_HEADER = {"n8n": "X-Slice-Key", "make": "x-make-apikey"}
+KEY_ENV = {"n8n": "SLICE_KEY_N8N", "make": "SLICE_KEY_MAKE", "zapier": "SLICE_KEY_ZAPIER"}
+KEY_HEADER = {"n8n": "X-Slice-Key", "make": "x-make-apikey", "zapier": "X-Slice-Key"}
 
 
 class ConfigError(Exception):

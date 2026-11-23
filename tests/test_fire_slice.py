@@ -90,10 +90,11 @@ def test_mask_url_hides_remote_tokens_but_not_localhost():
 
 
 def test_key_headers_per_target_and_never_for_no_key():
-    env = {"SLICE_KEY_N8N": "k-n8n-123456", "SLICE_KEY_MAKE": "k-make-123456"}
+    env = {"SLICE_KEY_N8N": "k-n8n-123456", "SLICE_KEY_MAKE": "k-make-123456", "SLICE_KEY_ZAPIER": "k-zap-123456"}
     assert fs.key_headers("n8n", env) == {"X-Slice-Key": "k-n8n-123456"}
     assert fs.key_headers("make", env) == {"x-make-apikey": "k-make-123456"}
-    assert fs.key_headers("zapier", env) == {}
+    assert fs.key_headers("zapier", env) == {"X-Slice-Key": "k-zap-123456"}
+    assert fs.key_headers("zapier", {}) == {}
     assert fs.key_headers("n8n", env, use_key=False) == {}
     assert fs.key_headers("n8n", {}) == {}
 
