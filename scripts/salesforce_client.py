@@ -86,6 +86,23 @@ class SalesforceClient:
         return {"scope": self._token.get("scope", ""), "user_id": identity.rstrip("/").rsplit("/", 1)[-1] if identity else None,
                 "token_type": self._token.get("token_type")}
 
+    def identity(self) -> dict:
+        """Who the token runs as, from Salesforce's identity URL. The token itself is never returned."""
+        if self._token is None:
+            self.sign_in()
+        info = self.get(self._token["id"])
+        return {k: info.get(k) for k in ("user_id", "username", "display_name", "active", "user_type")}
+
+    def can_query(self, sobject: str) -> bool:
+        """False when this login cannot see the object at all (Salesforce answers INVALID_TYPE)."""
+        try:
+            self.query(f"SELECT Id FROM {sobject} LIMIT 1")
+            return True
+        except SalesforceError as e:
+            if e.code == "INVALID_TYPE":
+                return False
+            raise
+
     def get(self, path: str, ok_404: bool = False):
         if self._token is None:
             self.sign_in()

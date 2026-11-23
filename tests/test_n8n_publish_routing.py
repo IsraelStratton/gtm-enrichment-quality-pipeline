@@ -64,3 +64,17 @@ def test_a_live_copy_that_was_changed_by_hand_is_out_of_step(change, words):
     live = as_n8n_holds_it(wf)
     change(live)
     assert any(words in d for d in pub.differences(live, wf)), pub.differences(live, wf)
+
+
+def test_a_new_form_trigger_gets_a_webhook_id_and_a_live_one_keeps_its_own():
+    """n8n registers no webhook for a trigger without a webhook ID (chapter 4's first publish: 404)."""
+    wanted = build.build("salesforce")
+    assert "webhookId" not in next(n for n in wanted["nodes"] if n["name"] == "Upload CSV")
+    fresh = pub.request_body(wanted, None)
+    first = next(n for n in fresh["nodes"] if n["name"] == "Upload CSV")["webhookId"]
+    assert len(first) == 36 and first.count("-") == 4
+    live = copy.deepcopy(wanted)
+    next(n for n in live["nodes"] if n["name"] == "Upload CSV")["webhookId"] = "kept-from-n8n"
+    assert next(n for n in pub.request_body(wanted, live)["nodes"] if n["name"] == "Upload CSV")["webhookId"] == "kept-from-n8n"
+    assert "webhookId" not in next(n for n in wanted["nodes"] if n["name"] == "Upload CSV"), "the file's workflow is left as it is"
+    assert set(fresh) == {"name", "nodes", "connections", "settings"}

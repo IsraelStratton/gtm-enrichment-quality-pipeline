@@ -10,8 +10,10 @@ What it does, so nothing is clicked by hand and nothing drifts:
      host from .env, SALESFORCE_DOMAIN), exactly as the committed file plus that host;
   2. finds each credential the file names in n8n, by name and type, and fills in its ID. It
      never reads or sends a secret: n8n keeps those;
-  3. creates the workflow, or updates the one with the same name (keeping its form trigger's
-     webhook ID), then publishes it;
+  3. creates the workflow, or updates the one with the same name, then publishes it. n8n
+     registers no webhook for a trigger without a webhook ID, and the file ships the form trigger
+     without one (n8n's editor import would copy a new ID over the Form Path). So the script
+     keeps the live trigger's ID, or gives a new trigger a fresh one;
   4. checks the form answers at http://localhost:5678/form/<path>.
 --check reads the live workflow and reports any node, setting or connection that differs
 from the file (positions and IDs aside). n8n leaves out a parameter that equals the node's
@@ -28,6 +30,7 @@ import copy
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 
 import requests
@@ -120,6 +123,15 @@ def differences(live: dict, wanted: dict) -> list[str]:
     return out
 
 
+def request_body(wanted: dict, live: dict | None, trigger: str = "Upload CSV") -> dict:
+    """What is sent to n8n: the file's workflow, with the form trigger's webhook ID kept from the
+    live copy or, for a trigger that has none, a new one (n8n registers no webhook without it)."""
+    body = copy.deepcopy({k: wanted[k] for k in ("name", "nodes", "connections", "settings")})
+    live_id = next((n.get("webhookId") for n in (live or {}).get("nodes", []) if n["name"] == trigger), None)
+    next(n for n in body["nodes"] if n["name"] == trigger)["webhookId"] = live_id or str(uuid.uuid4())
+    return body
+
+
 def wanted_workflow(target: str) -> dict:
     if target == "salesforce":
         return build.build("salesforce", build.salesforce_host_from_env())
@@ -157,11 +169,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"{t['output'].relative_to(REPO)}{' (plus the org host from .env)' if args.target == 'salesforce' else ''}; "
                   f"{'published' if live.get('active') else 'not published'}.")
             return 0 if not diff and live.get("active") else 1
-        body = {"name": wanted["name"], "nodes": wanted["nodes"], "connections": wanted["connections"], "settings": wanted["settings"]}
+        body = request_body(wanted, live)
         if live is not None:
-            live_trigger = next((n for n in live["nodes"] if n["name"] == "Upload CSV"), {})
-            if live_trigger.get("webhookId"):
-                next(n for n in body["nodes"] if n["name"] == "Upload CSV")["webhookId"] = live_trigger["webhookId"]
             saved = n8n.call("PUT", f"/workflows/{live['id']}", body)
             verb = "Updated"
         else:

@@ -6,15 +6,15 @@ Who does what follows Israel's ruling of 23/11/2026: the Code chat does the comm
 
 | Part | What | Who | State |
 |---|---|---|---|
-| A | Seven custom fields on Account | COURSES 2ND | To do |
-| B | Permission set "GTM v2 routing writer" | COURSES 2ND | To do |
-| C | The API-only integration user | COURSES 2ND (Israel types his own email address) | To do |
-| D | External Client App "GTM v2 routing (n8n)", client-credentials flow | COURSES 2ND; Israel passes the verification code and copies the key and secret | To do |
-| E | Three lines in `.env` | Israel pastes | To do |
-| F | n8n credential "Salesforce gtm-pipeline (client credentials)" | COURSES 2ND makes it; Israel pastes the key and secret | To do |
-| G | Check the org, then import and publish the workflow | Code chat | To do |
-| H | One test run of the demo file, reviewed | COURSES 2ND opens the pages; Israel makes the choices, or says yes to Claude in Chrome making them | To do |
-| I | Check the run against the log and Salesforce | Code chat | To do |
+| A | Seven custom fields on Account | COURSES 2ND | Done 24/11/2026 |
+| B | Permission set "GTM v2 routing writer" | COURSES 2ND | Done 24/11/2026 |
+| C | The API-only integration user | COURSES 2ND (Israel types his own email address) | Done 24/11/2026 |
+| D | External Client App "GTM v2 routing (n8n)", client-credentials flow | COURSES 2ND; Israel passes the verification code and copies the key and secret | Done 24/11/2026 |
+| E | Three lines in `.env` | Israel pastes | Done 24/11/2026 |
+| F | n8n credential "Salesforce gtm-pipeline (client credentials)" | COURSES 2ND makes it; Israel pastes the key and secret | Done 24/11/2026 |
+| G | Check the org, then import and publish the workflow | Code chat | Done 24/11/2026: check 19 of 19; published; in step |
+| H | One test run of the demo file, reviewed | COURSES 2ND opens the pages; Israel makes the choices, or says yes to Claude in Chrome making them | Done 24/11/2026: run `n8n-8791`, choices delegated by Israel, made by the Code chat |
+| I | Check the run against the log and Salesforce | Code chat | Done 24/11/2026: 8 of 8; stamp lookup |
 
 Sign in to the developer org first (Enpass: "Salesforce Dev gtm-pipeline"). That is Israel's.
 
@@ -143,20 +143,20 @@ Save. There is no "Connect" button for this grant: n8n asks Salesforce for a tok
 python scripts/salesforce_setup_check.py
 ```
 
-It signs in as n8n will and checks: scope `api` only; running as the API-only integration user; API v64.0 offered; all seven fields as specified; the user can create and edit the ten fields the engine writes; it can read, create and edit Accounts but not delete them; it cannot touch Leads, Contacts, Opportunities, Cases, Quotes, Users or the rest of the core list; it can delete nothing; it can edit no other custom field.
+It signs in as n8n will and checks: scope `api` only; running as the GTM Integration user (from Salesforce's identity URL), which cannot see profiles or permission sets at all; API v64.0 offered; all seven fields as specified; the user can create and edit the ten fields the engine writes; it can read, create and edit Accounts but not delete them; it cannot touch Leads, Contacts, Opportunities, Cases, Quotes, the rest of the core list or any custom object; it cannot create Users; it can delete no data object; it can edit no other custom field. Salesforce's own per-user rights (posts, files, notes, list views, sessions) are listed for the record.
 
 ```bash
 python scripts/n8n_publish_routing.py --target salesforce
 python scripts/n8n_publish_routing.py --target salesforce --check
 ```
 
-The first builds the workflow from the committed file plus the host from `.env`, finds the four credentials in n8n by name, creates and publishes "GTM v2 chapter 4: route leads with approval (Salesforce)", and checks the form answers at http://localhost:5678/form/gtm-v2-route-leads-salesforce. The second reads the live copy back and compares it with the file.
+The first builds the workflow from the committed file plus the host from `.env`, finds the four credentials in n8n by name, gives the form trigger a webhook ID (n8n registers no form without one; an existing workflow keeps its own), creates and publishes "GTM v2 chapter 4: route leads with approval (Salesforce)", and checks the form answers at http://localhost:5678/form/gtm-v2-route-leads-salesforce. The second reads the live copy back and compares it with the file.
 
 ## H. One test run (COURSES 2ND opens the pages; Israel reviews)
 
 The same run as chapter 2, so the two CRMs can be compared row for row.
 
-1. Open http://localhost:5678/form/gtm-v2-route-leads-salesforce.
+1. Open http://localhost:5678/form/gtm-v2-route-leads-salesforce in a normal browser (the Claude app's built-in browser pane blocks the review page's submit).
 2. Upload `skins/lead-routing/sample_run.csv` and press **Run the rules and the AI step**.
 3. Wait about 30 seconds. The data rules stop two rows; the AI proposes a route for the other 12.
 4. On the review page, type a reviewer label (not a personal name) and choose for every row:

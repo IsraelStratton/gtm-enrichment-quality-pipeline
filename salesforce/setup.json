@@ -112,6 +112,7 @@
     "first_name": "GTM",
     "last_name": "Integration",
     "alias": "gtmint",
+    "username_pattern": "^gtm-v2-integration-[a-z0-9]{4}@example\\.com$",
     "user_license": "Salesforce Integration",
     "profile": "Minimum Access - API Only Integrations",
     "permission_set_license": "Salesforce API Integration",

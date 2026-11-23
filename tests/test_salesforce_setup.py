@@ -35,9 +35,21 @@ def good_account():
 
 
 def good_global():
-    objs = [{"name": "Account", "createable": True, "updateable": True, "deletable": False}]
+    objs = [{"name": "Account", "createable": True, "updateable": True, "deletable": False},
+            {"name": "User", "createable": True, "updateable": True, "deletable": False}]
     objs += [{"name": n, "createable": False, "updateable": False, "deletable": False} for n in chk.CORE_OBJECTS]
     return {"sobjects": objs}
+
+
+def good_user():
+    """What the integration user's describe of User looks like: no ProfileId at all."""
+    return {"name": "User", "createable": True, "updateable": True, "deletable": False,
+            "fields": [{"name": n, "createable": True} for n in ("Username", "LastName", "Email", "Alias")]}
+
+
+GOOD_IDENTITY = {"user_id": "005000000000001AAA", "username": "gtm-v2-integration-ab12@example.com",
+                 "display_name": "GTM Integration", "active": True, "user_type": "STANDARD"}
+SEES_NOTHING = {n: False for n in chk.SETUP_OBJECTS}
 
 
 def passed(results):
@@ -49,17 +61,35 @@ def passed(results):
 
 def test_an_org_set_up_as_specified_passes():
     assert passed(chk.check_fields(good_account()))
-    reach, others = chk.check_reach(good_account(), good_global())
-    assert passed(reach) and others == []
+    reach, record = chk.check_reach(good_account(), good_global(), good_user())
+    assert passed(reach) and record == {"create_or_edit": [], "delete": []}
 
 
 def test_the_sign_in_must_be_api_scope_only_and_the_integration_user():
-    user = {"Profile": {"Name": chk.INTEGRATION_PROFILE, "UserLicense": {"Name": chk.INTEGRATION_LICENCE}}}
-    assert passed(chk.check_sign_in({"scope": "api"}, user))
-    assert not passed(chk.check_sign_in({"scope": "api full refresh_token"}, user))
-    admin = {"Profile": {"Name": "System Administrator", "UserLicense": {"Name": "Salesforce"}}}
-    assert not passed(chk.check_sign_in({"scope": "api"}, admin))
-    assert not passed(chk.check_sign_in({"scope": "api"}, None))
+    assert passed(chk.check_sign_in({"scope": "api"}, GOOD_IDENTITY, SEES_NOTHING))
+    assert not passed(chk.check_sign_in({"scope": "api full refresh_token"}, GOOD_IDENTITY, SEES_NOTHING))
+    assert not passed(chk.check_sign_in({"scope": "api"}, None, SEES_NOTHING))
+    assert not passed(chk.check_sign_in({"scope": "api"}, GOOD_IDENTITY, None))
+
+
+@pytest.mark.parametrize("change, words", [
+    ({"display_name": "Israel Admin"}, "runs as the integration user"),
+    ({"username": "someone@other.example"}, "runs as the integration user"),
+    ({"active": False}, "not active"),
+])
+def test_a_sign_in_as_anyone_else_fails(change, words):
+    results = chk.check_sign_in({"scope": "api"}, {**GOOD_IDENTITY, **change}, SEES_NOTHING)
+    assert any(not ok and words in text for ok, text in results), results
+
+
+def test_a_login_that_can_see_profiles_is_not_the_api_only_user():
+    results = chk.check_sign_in({"scope": "api"}, GOOD_IDENTITY, {"Profile": True, "PermissionSet": False})
+    assert any(not ok and "but can see: Profile" in text for ok, text in results), results
+
+
+def test_the_username_is_shown_without_its_random_part():
+    text = " ".join(t for _, t in chk.check_sign_in({"scope": "api"}, GOOD_IDENTITY, SEES_NOTHING))
+    assert "gtm-v2-integration-…@example.com" in text and "ab12" not in text
 
 
 def test_the_api_version_must_be_offered():
@@ -105,21 +135,44 @@ def test_picklist_labels_left_as_codes_pass_with_a_note():
 @pytest.mark.parametrize("change, words", [
     (lambda a, g: a.update(deletable=True), "Accounts: cannot delete"),
     (lambda a, g: next(o for o in g["sobjects"] if o["name"] == "Contact").update(createable=True), "but can: Contact"),
-    (lambda a, g: g["sobjects"].append({"name": "Note", "createable": True, "updateable": True, "deletable": True}), "but can delete: Note"),
+    (lambda a, g: next(o for o in g["sobjects"] if o["name"] == "Opportunity").update(deletable=True), "but can delete: Opportunity"),
+    (lambda a, g: g["sobjects"].append({"name": "Invoice__c", "custom": True, "createable": False, "updateable": True, "deletable": False}),
+     "but can: Invoice__c"),
+    (lambda a, g: g["sobjects"].append({"name": "Invoice__c", "custom": True, "createable": False, "updateable": False, "deletable": True}),
+     "but can delete: Invoice__c"),
+    (lambda a, g: next(o for o in g["sobjects"] if o["name"] == "User").update(deletable=True), "but can delete: User"),
     (lambda a, g: next(f for f in a["fields"] if f["name"] == "Other_Field__c").update(updateable=True), "but can edit: Other_Field__c"),
 ])
 def test_any_wider_reach_fails(change, words):
     account, objects = good_account(), good_global()
     change(account, objects)
-    reach, _ = chk.check_reach(account, objects)
+    reach, _ = chk.check_reach(account, objects, good_user())
     assert any(not ok and words in text for ok, text in reach), reach
 
 
-def test_other_creatable_objects_are_listed_for_the_record():
+@pytest.mark.parametrize("change, words", [
+    (lambda u: u["fields"].append({"name": "ProfileId", "createable": True}), "but it can set ProfileId"),
+    (lambda u: u.update(deletable=True), "but it can delete them"),
+])
+def test_a_login_that_could_make_or_remove_users_fails(change, words):
+    user = good_user()
+    change(user)
+    reach, _ = chk.check_reach(good_account(), good_global(), user)
+    assert any(not ok and words in text for ok, text in reach), reach
+
+
+def test_salesforce_own_item_rights_are_listed_for_the_record_not_failed():
+    """Every Salesforce user may post, upload files, keep notes and list views, and delete their own
+    ones. Describe marks those objects createable and deletable; no permission set controls them."""
     objects = good_global()
-    objects["sobjects"].append({"name": "ContentVersion", "createable": True, "updateable": False, "deletable": False})
-    reach, others = chk.check_reach(good_account(), objects)
-    assert passed(reach) and others == ["ContentVersion"]
+    objects["sobjects"] += [{"name": "ContentVersion", "createable": True, "updateable": False, "deletable": False},
+                            {"name": "FeedItem", "createable": True, "updateable": True, "deletable": True},
+                            {"name": "AccountShare", "createable": True, "updateable": True, "deletable": True},
+                            {"name": "AuthSession", "createable": False, "updateable": False, "deletable": True}]
+    reach, record = chk.check_reach(good_account(), objects, good_user())
+    assert passed(reach), reach
+    assert record == {"create_or_edit": ["AccountShare", "ContentVersion", "FeedItem"],
+                      "delete": ["AccountShare", "AuthSession", "FeedItem"]}
 
 
 def test_the_check_reads_the_fields_the_engine_writes():
@@ -180,6 +233,30 @@ def test_a_refused_sign_in_names_salesforce_error_not_the_secret():
     with pytest.raises(sc.SalesforceError) as e:
         sc.SalesforceClient("acme.my.salesforce.com", "the-id", "the-secret", session).sign_in()
     assert "invalid_grant: no client credentials user enabled" in str(e.value) and "the-secret" not in str(e.value)
+
+
+def test_identity_comes_from_the_identity_url_and_never_carries_the_token():
+    token = {"access_token": "SECRET-TOKEN", "scope": "api", "token_type": "Bearer", "id": "https://login.salesforce.com/id/00Dxx/005xx0000012345"}
+    who = {"user_id": "005xx0000012345", "organization_id": "00Dxx", "username": "gtm-v2-integration-ab12@example.com",
+           "display_name": "GTM Integration", "active": True, "user_type": "STANDARD", "urls": {"rest": "..."}}
+    session = FakeSession([FakeResponse(200, token), FakeResponse(200, who)])
+    info = sc.SalesforceClient("acme.my.salesforce.com", "the-id", "the-secret", session).identity()
+    assert info == {k: who[k] for k in ("user_id", "username", "display_name", "active", "user_type")}
+    assert "SECRET-TOKEN" not in json.dumps(info)
+    assert session.calls[1][1] == token["id"]
+
+
+def test_an_object_this_login_cannot_see_reads_as_not_seen_and_other_errors_still_raise():
+    token = {"access_token": "T", "scope": "api", "id": "https://login.salesforce.com/id/00Dxx/005xx"}
+    not_supported = FakeResponse(400, [{"errorCode": "INVALID_TYPE", "message": "sObject type 'Profile' is not supported."}])
+    client = sc.SalesforceClient("acme.my.salesforce.com", "i", "s", FakeSession([FakeResponse(200, token), not_supported]))
+    assert client.can_query("Profile") is False
+    client = sc.SalesforceClient("acme.my.salesforce.com", "i", "s", FakeSession([FakeResponse(200, token), FakeResponse(200, {"records": []})]))
+    assert client.can_query("Profile") is True
+    expired = FakeResponse(401, [{"errorCode": "INVALID_SESSION_ID", "message": "Session expired or invalid"}])
+    client = sc.SalesforceClient("acme.my.salesforce.com", "i", "s", FakeSession([FakeResponse(200, token), expired]))
+    with pytest.raises(sc.SalesforceError):
+        client.can_query("Profile")
 
 
 # ------------------------------------------------------------------ check_run --salesforce
