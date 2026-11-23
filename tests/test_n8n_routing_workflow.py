@@ -88,6 +88,13 @@ def test_routing_rules_come_only_from_the_playbook_file():
     assert '-v "$REPO/skins:$SKINS_IN_N8N:ro"' in script and 'SKINS_IN_N8N="/home/node/gtm-skins"' in script
 
 
+def test_n8n_is_published_on_this_mac_only():
+    """Israel's yes, 23/11/2026: no other device on the network can reach the form or the webhook."""
+    script = (REPO / "scripts/n8n_docker.sh").read_text(encoding="utf-8")
+    ports = [line.strip() for line in script.splitlines() if line.strip().startswith("-p ")]
+    assert ports == ["-p 127.0.0.1:5678:5678 \\"]
+
+
 def reachable(start, skip):
     seen, todo = set(), [start]
     while todo:
@@ -115,7 +122,9 @@ def test_loop_and_form_wiring():
     assert trigger["parameters"]["options"]["path"] == build.FORM_PATH
     assert trigger["parameters"]["formFields"]["values"][0]["fieldName"] == "CSV_File"
     assert V1_NODES["Extract CSV"]["parameters"]["binaryPropertyName"] == "CSV_File"
-    assert all(NODES[n].get("webhookId") for n in ("Upload CSV", "Review Page", "Done"))
+    # The trigger ships with no webhookId, or n8n's import overwrites the Form Path with a new one.
+    assert "webhookId" not in trigger
+    assert all(NODES[n].get("webhookId") for n in ("Review Page", "Done"))
     assert NODES["Review Page"]["parameters"]["jsonOutput"].startswith("={{ $('Build Review')")
     claude = NODES["Claude Routing Step"]
     assert claude["onError"] == "continueRegularOutput" and claude["retryOnFail"]

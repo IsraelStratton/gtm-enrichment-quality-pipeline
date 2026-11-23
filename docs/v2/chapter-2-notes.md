@@ -34,7 +34,7 @@ Drawn by hand for these notes. The README diagram is made from the workflow file
 | The run log: proposals, decisions, prices, and views for the full record, each run and cost by route. An add-only login for the pipeline | [`db/run_log.sql`](../../db/run_log.sql), [`scripts/setup_run_log.py`](../../scripts/setup_run_log.py), [`pricing/claude_prices.json`](../../pricing/claude_prices.json) | KB-135 step 4; A1.1 to A1.3 |
 | The AI step on its own, for proofs and (from chapter 6) the eval | [`scripts/route_leads.py`](../../scripts/route_leads.py) | KB-135 step 2 |
 | A check of a finished run against the log and HubSpot | [`scripts/check_run.py`](../../scripts/check_run.py) | A1.1, A1.2, A1.3 |
-| n8n started with the playbook folder mounted read-only | [`scripts/n8n_docker.sh`](../../scripts/n8n_docker.sh) | A3.1 |
+| n8n started with the playbook folder mounted read-only, and published on this Mac only | [`scripts/n8n_docker.sh`](../../scripts/n8n_docker.sh) | A3.1; the control sheet |
 | The routing agent's role card | [`role-cards/routing-agent.md`](role-cards/routing-agent.md) | A1.4 |
 | Steps for HubSpot, the n8n credentials, the import and the test run | [`chapter-2-build.md`](chapter-2-build.md) | KB-135 steps 2 and 3 |
 | `anthropic` and `psycopg` added to `requirements.txt` | [`requirements.txt`](../../requirements.txt) | Setup carry-over |
@@ -70,7 +70,20 @@ Drawn by hand for these notes. The README diagram is made from the workflow file
 - the workflow: built by the script and up to date; only Claude and HubSpot are called; nothing can send a message; no path reaches HubSpot without the review page; the version 1 nodes are unchanged;
 - a harness runs every Code node of the real workflow file on the demo file, with n8n's helpers stubbed: 2 rows quarantined, 12 proposals, flagged rows first, a stamp on every write, a failed HubSpot write logged as failed.
 
-**Not yet proved: the n8n run end to end** (KB-135 done when, item 1). It needs the HubSpot properties, two n8n credentials, the import and a person on the review page: parts C to F of the build guide. Then `check_run.py --latest --hubspot` checks it (part G).
+**The n8n run, end to end** (KB-135 done when, item 1), run `n8n-8790`, 23/11/2026 17:26. COURSES 2ND made the six HubSpot properties and the two n8n credentials (Israel pasted the secrets), imported the workflow and ran the demo file:
+
+| Step | Result |
+|---|---|
+| Data rules | 14 rows in, 2 quarantined (the invalid domain and the duplicate) |
+| AI step | 12 proposals, 4 flagged for a close look |
+| Review page | Rejected 3 (L-0031 spam, L-0034 and L-0036 attacks); changed 1 (L-0007 to `mid_market · high`); approved 8 |
+| HubSpot | 9 written (8 approved, 1 changed), no write failed |
+| Cost | US$0.004683 for 12 decisions, US$0.00039 each, read back from the log |
+| `check_run.py --latest --hubspot` | 7 of 7 checks passed: every proposal decided; a stamp matching the log on all 9 writes (A1.1); none on the 3 rejected rows, which were not written; the changed row keeps both values (A1.3); all 9 HubSpot companies carry the logged stamp, route, priority and status; no rejected row carries the run's stamp |
+| One stamp, one query (A1.2) | The stamp read from Bluegum Retail Group in HubSpot, `gtm-v2 D-n8n8790-04 \| claude-haiku-5-5 \| lead-routing-playbook@1.0.0 \| changed by ... \| 2026-11-23T06:25:18Z`, found its full record: AI `mid_market · medium` at 0.85, person `mid_market · high`, 1,868 ms, US$0.000382, 138 seconds from proposal to decision |
+| Playbook | The SHA-256 n8n logged equals the repo file's: n8n read the same playbook |
+
+The choices on the review page were entered by Claude in Chrome on Israel's yes, under the reviewer label "Claude for Israel (on his yes)". As in chapter 3, this proves the steps work; it is not a separate person's review. For the recorded demo, Israel makes the choices himself.
 
 ## Choices made, and why
 
@@ -95,11 +108,12 @@ Drawn by hand for these notes. The README diagram is made from the workflow file
 - **HubSpot and Claude put error messages in different places** (`message` against `error.message`). The harness found it before n8n ever ran: a failed write would have been logged as "HTTP 400" with no reason.
 - **Haiku 5.5's higher price for prompts over 100,000 tokens applies per request.** The runner first applied it to the run's total and printed US$0.078 for a run that cost US$0.0157. The database view had it right. Fixed, and the runner now sums per request.
 - **About 3,360 input tokens a decision are the fixed instructions and playbook.** A prompt-caching candidate for chapter 6: cache reads on Haiku 5.5 are US$0.01 a million tokens against US$0.10.
-- **Stopping the container** made n8n log "Last session crashed" on the next start. Nothing was running or waiting at the time (checked first), and nothing was lost.
+- **Stopping the container** made n8n log "Last session crashed" on the next start. Nothing was running or waiting at the time (checked first), and nothing was lost. The script now gives n8n 30 seconds to stop; the next restart was clean.
+- **n8n's import replaced the Form Path.** The first import put the form at `/form/<a new ID>`, not `/form/gtm-v2-route-leads`. Read in n8n's editor code: an imported trigger that already has a webhook ID gets a new one, copied over its Form Path; a trigger with none keeps its path. The file now ships the trigger without one (a test checks it), and the live workflow's path was set through the n8n API. The next import has not been tried yet, so the build guide keeps a check of the path.
 
-## Open, for Israel
+## Closed the same day
 
-- **The routing form has no sign-in.** Anyone on the same network as the Mac could start a run (a few cents of AI) and approve their own made-up rows. One line closes it for every n8n entry point: publish n8n on this Mac only (`-p 127.0.0.1:5678:5678`). Not done without his yes, because n8n would then not be reachable from his other devices. See the control sheet.
+- **The routing form had no sign-in,** so anyone on the same network as the Mac could have started a run and approved their own rows. On Israel's yes, after the check passed, n8n is now published on this Mac only (`-p 127.0.0.1:5678:5678` in `scripts/n8n_docker.sh`). Before, n8n answered on the Mac's network address with HTTP 200; after, that address is refused, and the form, the slice webhook and the run log all work from the Mac as before. The reviewer still types their own name or label: the free n8n form does not know who is signed in.
 
 ## How it works (walk-through)
 
@@ -123,11 +137,14 @@ Drawn by hand for these notes. The README diagram is made from the workflow file
 - **Apply Decisions, Anything to Write?, HubSpot Batch Upsert.** Approved and changed rows only, upserted on `clay_domain_key` as in version 1, with route, priority, reason, confidence, status and the stamp.
 - **Build Decision Log, Log Decisions, Read Run Summary, Done.** What the person did and what HubSpot did, then the counts and the cost read back from the log.
 
-The "it went wrong" story for this chapter: the first cost figure was five times too high, because a price tier that applies to each request was applied to the run's total. The database had it right because it costs each row on its own; the script was fixed to do the same.
+The "it went wrong" stories for this chapter:
+
+- The first cost figure was five times too high, because a price tier that applies to each request was applied to the run's total. The database had it right because it costs each row on its own; the script was fixed to do the same.
+- The first import put the form at a random address. n8n's editor gives an imported trigger a new ID and copies it over the form's path. Reading the editor's code showed the rule; the file now ships the trigger in the shape that keeps its path.
 
 ## Demo checklist
 
-- n8n started with `scripts/n8n_docker.sh`; the workflow published.
+- n8n started with `scripts/n8n_docker.sh`; the workflow published; the form opens at http://localhost:5678/form/gtm-v2-route-leads.
 - `skins/lead-routing/sample_run.csv` ready to upload.
 - A reviewer label, not a personal name, typed on the review page in a recording.
 - After the run: `python scripts/check_run.py --latest --hubspot`, then one stamp looked up with `--stamp`.

@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Start, or re-create, the local n8n container this build uses.
 #
-# The same container as before chapter 2 (same image, port and two data folders), plus one
-# read-only folder: this repo's skins/, mounted at /home/node/gtm-skins. The chapter 2 workflow
-# reads the routing playbook from there on every run, so editing SKILL.md changes the routing
-# with no change to the workflow. Read-only: n8n can read the playbook but cannot change it.
+# The same container as before chapter 2 (same image and two data folders), with two changes:
+#   1. this repo's skins/ is mounted read-only at /home/node/gtm-skins. The chapter 2 workflow
+#      reads the routing playbook from there on every run, so editing SKILL.md changes the
+#      routing with no change to the workflow. n8n can read the playbook but cannot change it.
+#   2. n8n is published on this Mac only (127.0.0.1), not on every network interface, so no
+#      other device on the network can open its forms or call its webhooks. Israel's yes,
+#      23/11/2026, after the chapter 2 check passed. Browsers on this Mac, the fire script and
+#      Google's sign-in redirect all use localhost, so they work as before.
 #
 # n8n keeps its workflows, credentials and executions in ~/.n8n, so re-creating the container
 # loses nothing. Nothing here is scheduled; the container starts only when this script runs.
@@ -18,12 +22,12 @@ SKINS_IN_N8N="/home/node/gtm-skins"
 PLAYBOOK_IN_N8N="$SKINS_IN_N8N/lead-routing/lead-routing-playbook/SKILL.md"
 
 if docker ps -a --format '{{.Names}}' | grep -qx n8n; then
-  docker stop n8n >/dev/null
+  docker stop -t 30 n8n >/dev/null  # give n8n time to shut down cleanly
   docker rm n8n >/dev/null
 fi
 
 docker run -d --name n8n \
-  -p 5678:5678 \
+  -p 127.0.0.1:5678:5678 \
   -v "$HOME/.n8n:/home/node/.n8n" \
   -v "$HOME/Documents/AI_Datasets:/home/node/AI_Datasets" \
   -v "$REPO/skins:$SKINS_IN_N8N:ro" \
@@ -38,3 +42,12 @@ if docker exec n8n sh -c "touch $SKINS_IN_N8N/.write-test" 2>/dev/null; then
   exit 1
 fi
 echo "The skins folder is read-only inside n8n."
+
+LAN="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+if [ -n "$LAN" ]; then
+  if curl -s -m 3 -o /dev/null "http://$LAN:5678/healthz"; then
+    echo "WARNING: n8n answers on the network address, not only on this Mac" >&2
+    exit 1
+  fi
+  echo "n8n is reachable from this Mac only: the network address is refused."
+fi

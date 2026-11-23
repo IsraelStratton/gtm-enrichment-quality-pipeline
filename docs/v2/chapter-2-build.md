@@ -6,19 +6,21 @@ Who does what follows Israel's ruling of 23/11/2026: the Code chat does the comm
 
 | Part | What | Who | State |
 |---|---|---|---|
-| A | n8n container re-created with the playbook folder mounted read-only | Code chat | Done 23/11/2026 |
+| A | n8n container re-created with the playbook folder mounted read-only, and published on this Mac only | Code chat | Done 23/11/2026 |
 | B | Run log in the local Supabase Postgres, with an add-only login | Code chat | Done 23/11/2026 |
-| C | Six company properties in HubSpot | COURSES 2ND | To do |
-| D | Two n8n credentials | COURSES 2ND, Israel pastes the secrets | To do |
-| E | Import and publish the workflow | COURSES 2ND | To do |
-| F | One test run of the demo file, approved on the review page | COURSES 2ND opens the pages; Israel reviews | To do |
-| G | Check the run against the log and HubSpot | Code chat | To do |
+| C | Six company properties in HubSpot | COURSES 2ND | Done 23/11/2026 |
+| D | Two n8n credentials | COURSES 2ND, Israel pasted the secrets | Done 23/11/2026 |
+| E | Import and publish the workflow | COURSES 2ND | Done 23/11/2026; Form Path fixed afterwards (see E) |
+| F | One test run of the demo file, approved on the review page | COURSES 2ND; the choices were entered by Claude in Chrome on Israel's yes | Done 23/11/2026, run `n8n-8790` |
+| G | Check the run against the log and HubSpot | Code chat | Done 23/11/2026: every check passed |
 
 ## A. The playbook folder inside n8n (done)
 
 `scripts/n8n_docker.sh` re-creates the `n8n` container exactly as before (same image, port and two data folders) plus one read-only folder: the repo's `skins/`, at `/home/node/gtm-skins`. n8n's file access is limited to that folder and its default `~/.n8n-files`. Proved on 23/11/2026: n8n 2.10.3 healthy, the playbook readable inside the container with the same SHA-256 as the repo file, a write refused ("Read-only file system"), all nine workflows and every credential still there, and the chapter 3 slice workflow active again.
 
 From now on, start n8n with `scripts/n8n_docker.sh`. An older `docker run` command without the third `-v` line starts n8n without the playbook, and the routing step then stops at "Read Playbook".
+
+After the test run passed, on Israel's yes, the same script publishes n8n on this Mac only (`-p 127.0.0.1:5678:5678`). Before, n8n answered on the Mac's network address (HTTP 200); after, that address is refused and `localhost` works as before. The script checks this every time it starts n8n. It also stops n8n with 30 seconds' grace, so n8n no longer logs "Last session crashed" on the next start.
 
 ## B. The run log (done)
 
@@ -75,9 +77,12 @@ The HubSpot credential already exists from version 1 ("HubSpot Service Key"). No
 1. Workflows, Create workflow, then the three-dot menu, **Import from File**. Choose `n8n/workflow-v2.json` in the repo folder (`/Users/israelstratton/gtm-enrichment-quality-pipeline/n8n/workflow-v2.json`).
 2. Check the three credential nodes show their credential, not a warning: **Claude Routing Step** (Claude key gtm-pipeline-v2), **HubSpot Batch Upsert** (HubSpot Service Key), and the three Postgres nodes **Log Proposals**, **Log Decisions**, **Read Run Summary** (GTM v2 run log). n8n matches them by name on save; if one shows a warning, pick the credential of that name from its list.
 3. Save, then **Publish**. The form is then at http://localhost:5678/form/gtm-v2-route-leads.
-4. Leave every other workflow, and every Zap, as it is.
+4. Open the **Upload CSV** node, Options, and check **Form Path** reads `gtm-v2-route-leads`. If it shows a long ID instead, type `gtm-v2-route-leads`, save and publish again.
+5. Leave every other workflow, and every Zap, as it is.
 
 The workflow has 24 nodes. Its name is "GTM v2 chapter 2: route leads with approval".
+
+**Why step 4.** On the first import (23/11/2026) the form came up at `/form/<a new ID>`, not at `/form/gtm-v2-route-leads`. n8n's editor (2.10.3) gives any imported trigger that already carries a webhook ID a new one, and copies that ID over its Form Path. A trigger with no webhook ID gets an ID too, but keeps its path. The file now ships the trigger with no webhook ID, so the path should survive the next import; that has been read from n8n's editor code, not yet tried by a second import, so step 4 stays. The live workflow was fixed the same day by setting its Form Path through the n8n API and publishing again: the named address now answers 200, and the old one 404.
 
 ## F. One test run (COURSES 2ND opens the pages; Israel reviews)
 
@@ -92,6 +97,8 @@ The workflow has 24 nodes. Its name is "GTM v2 chapter 2: route leads with appro
 
 Nothing is written to HubSpot before step 5. Nothing is sent to anyone at any step.
 
+**As run on 23/11/2026 (`n8n-8790`).** 12 proposals, 4 flagged, 2 rows quarantined. On Israel's yes, Claude in Chrome entered the choices under the reviewer label "Claude for Israel (on his yes)": rejected L-0031, L-0034 and L-0036; changed L-0007 to `mid_market · high`; approved the other 8, including L-0025 as `smb · medium`. Done page: 9 written (8 approved, 1 changed), 3 rejected, no write failed, AI cost US$0.004683. As in chapter 3, this proves the steps work; it is not a separate person's review. For the recorded demo, Israel makes the choices himself.
+
 ## G. Check the run (Code chat)
 
 ```bash
@@ -103,3 +110,5 @@ It passes when every proposal has a decision, every write carries a stamp that m
 ```bash
 python scripts/check_run.py --stamp "<paste a gtm_decision_stamp from a HubSpot company>"
 ```
+
+**Result for `n8n-8790`.** All seven checks passed: 12 of 12 proposals decided; 9 of 9 writes carry a stamp matching the log; 3 rejected rows carry none and were not written; the changed row keeps both values (L-0007: AI `mid_market · medium`, person `mid_market · high`); 9 of 9 writes reached HubSpot; 9 of 9 companies in HubSpot carry the logged stamp, route, priority and status; no rejected row carries the run's stamp. The stamp read from Bluegum Retail Group in HubSpot found its full record in one query, with the playbook hash n8n logged equal to the repo file's.

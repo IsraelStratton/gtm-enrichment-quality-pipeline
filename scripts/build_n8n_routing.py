@@ -185,7 +185,10 @@ def build() -> dict:
 
     upload = from_v1("Upload CSV", [0, 300])
     upload["typeVersion"] = 2.5
-    upload["webhookId"] = node_id("Upload CSV webhook")
+    # No webhookId on purpose. On import, n8n's editor (2.10.3) gives a trigger that has one a
+    # new ID and overwrites its Form Path with it; a trigger without one gets an ID and keeps
+    # its path. Found on the first import, 23/11/2026.
+    upload.pop("webhookId", None)
     upload["parameters"] = {
         "formTitle": "GTM pipeline v2: route leads",
         "formDescription": "Upload a company CSV with an enquiry column. The data rules run first, then the AI proposes a route for each clean row. You approve, change or reject every proposal on the next page. Nothing is written to HubSpot before you do.",
