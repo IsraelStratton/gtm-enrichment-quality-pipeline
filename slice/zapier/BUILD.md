@@ -90,7 +90,9 @@ Then switch both Zaps off, unless the Pro trial follows straight away (KB-135, s
 
 ## Way 2: Pro trial, one Zap with Zapier's AI and an approval step
 
-Israel's yes, 23/11/2026. COURSES 2ND starts the trial and stops if Zapier shows a card field or offers 7 days instead of 14. Zapier's help pages say the Professional trial lasts 14 days and needs no card. Started today, it ends about 07/12/2026, so the Pro Zap is recorded as a short clip inside the trial. What happens to a trial-built Zap afterwards has not been checked.
+Israel's yes, 23/11/2026. COURSES 2ND starts the trial and stops if Zapier shows a card field or offers 7 days instead of 14.
+
+**State, 23/11/2026, 15:36.** Trial on, with no card; it ends 07/12/2026. The Zap is a draft with steps 1 and 2. One sample lead has been fired for the trigger's test data. Zapier's help pages say the Professional trial lasts 14 days and needs no card. Started today, it ends about 07/12/2026, so the Pro Zap is recorded as a short clip inside the trial. What happens to a trial-built Zap afterwards has not been checked.
 
 This version takes the same payload and key as n8n and Make. Zapier's AI writes a note for the owner, Israel approves the note, and only then are the row and the email written.
 
