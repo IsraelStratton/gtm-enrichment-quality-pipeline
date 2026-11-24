@@ -21,7 +21,7 @@ Who does what follows Israel's ruling of 23/11/2026 and his brief for this chapt
 | J | Sign the Salesforce CLI in as the admin, for parts B to E and the seed | Israel (a sign-in) | Done 24/11/2026 (alias gtm-v2-admin). It stays signed in until part L |
 | K | Seed the made-up quotes, then check the org | Code chat | Done 24/11/2026: seed (5 products, the standard price book switched on, 8 quotes with 12 lines, in Needs Review); org check **27 of 27**, signed in as the desk. On the way, two changes on Israel's yes: Price Books Read (Salesforce hid quote lines without it), and the Apex guard (with price books readable, Salesforce let the desk change quote lines) |
 | L | Sign the CLI out | Israel | To do |
-| M | Import and publish the workflow | Code chat | To do |
+| M | Import and publish the workflow | Code chat | Done 24/11/2026: created and published through the n8n API, 27 nodes, credentials found by name; the form answers 200; the live copy matches the file; chapters 2 and 4 still in step |
 | N | One reviewed run | COURSES 2ND opens the pages; Israel makes the choices, or says yes to the Code chat making them | To do |
 | O | Check the run against the log, Salesforce and the inbox | Code chat | To do |
 
