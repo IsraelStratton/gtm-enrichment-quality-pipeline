@@ -12,8 +12,10 @@ for chapter 5, and checks:
   5. the desk can edit a quote's status and the two desk fields, proved by writing one quote's own
      current values back to it (nothing changes);
   6. what it cannot do: create or delete a quote; edit any other GTM field on a quote; see a
-     quote's contact, email, phone or fax at all; create, edit or delete opportunities, accounts
-     or products; touch leads, contacts or cases.
+     quote's contact, email, phone or fax at all; create, edit or delete opportunities, accounts,
+     products, price books, price book entries or quote lines; touch leads, contacts or cases.
+     Salesforce lets anyone who can edit a quote change its lines once they can see price books
+     (found 24/11/2026), so the quote-line rule is checked on its own.
 
   python scripts/salesforce_quote_desk_check.py
 
@@ -42,7 +44,7 @@ DESK_NAME = f"{USER['first_name']} {USER['last_name']}"
 USERNAME_RE = re.compile(USER["username_pattern"], re.IGNORECASE)
 EDIT = set(SETUP["standard_fields_edited"]["Quote"]) | {f["api_name"] for f in SETUP["custom_fields"] if f["desk_access"] == "edit"}
 NEVER_SEEN = SETUP["fields_never_read"]["Quote"]
-READ_ONLY_OBJECTS = ["Opportunity", "Account", "Product2"]
+READ_ONLY_OBJECTS = ["Opportunity", "Account", "Product2", "Pricebook2", "PricebookEntry", "QuoteLineItem"]
 NO_ACCESS_OBJECTS = ["Lead", "Contact", "Case"]
 Result = tuple[bool, str]
 

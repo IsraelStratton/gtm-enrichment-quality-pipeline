@@ -45,7 +45,7 @@ def test_the_desk_has_its_own_login_and_never_the_routing_one(tmp_path):
 
 def test_the_permission_set_grants_no_create_or_delete_and_edits_three_fields():
     ps = SETUP["permission_set"]
-    assert ps["object_permissions"] == {"Quote": ["Read", "Edit"], "Opportunity": ["Read"], "Account": ["Read"], "Product2": ["Read"]}
+    assert ps["object_permissions"] == {"Quote": ["Read", "Edit"], "Opportunity": ["Read"], "Account": ["Read"], "Product2": ["Read"], "Pricebook2": ["Read"]}
     assert set(ps["object_permissions_never"]) == {"Create", "Delete", "View All", "Modify All"}
     assert ps["field_permissions_edit"] == ["Status", "GTM_Desk_Reason__c", "GTM_Desk_Stamp__c"]
     assert {f["api_name"] for f in SETUP["custom_fields"] if f["desk_access"] == "edit"} == {"GTM_Desk_Reason__c", "GTM_Desk_Stamp__c"}
@@ -151,7 +151,8 @@ def test_a_desk_that_can_create_or_delete_quotes_fails():
 
 def test_the_other_objects_must_be_read_only_or_out_of_reach():
     ro = {"queryable": True, "createable": False, "updateable": False, "deletable": False}
-    good = {"Opportunity": ro, "Account": ro, "Product2": ro, "Lead": None, "Contact": None, "Case": None}
+    good = {"Opportunity": ro, "Account": ro, "Product2": ro, "Pricebook2": ro, "PricebookEntry": ro, "QuoteLineItem": ro,
+            "Lead": None, "Contact": None, "Case": None}
     assert all(ok for ok, _ in org.check_other_objects(good))
     bad = dict(good, Opportunity=dict(ro, updateable=True), Contact={"queryable": True})
     assert [t for ok, t in org.check_other_objects(bad) if not ok] == [
@@ -264,7 +265,8 @@ def test_the_permission_set_metadata_grants_exactly_the_desks_reach():
     for never in ("Quote.Email", "Quote.Phone", "Quote.Fax", "Quote.ContactId"):
         assert never not in text
     assert "<license>" not in text and "<userPermissions>" not in text
-    objects = dict(re.findall(r"<objectPermissions>([\s\S]*?)<object>(\w+)</object>", text)[i][::-1] for i in range(4))
+    objects = {obj: body for body, obj in re.findall(r"<objectPermissions>([\s\S]*?)<object>(\w+)</object>", text)}
+    assert sorted(objects) == ["Account", "Opportunity", "Pricebook2", "Product2", "Quote"]
     for obj, body in objects.items():
         on = set(re.findall(r"<(\w+)>true</\1>", body))
         assert on == ({"allowRead", "allowEdit"} if obj == "Quote" else {"allowRead"}), obj
@@ -294,3 +296,12 @@ def test_the_desk_username_is_made_to_the_pattern_and_kept_out_of_the_repo(tmp_p
     make_desk_user.save_username(name, env, private)
     assert f"SALESFORCE_DESK_USER={name}\n" in env.read_text() and env.read_text().count("SALESFORCE_DESK_USER") == 1
     assert private.read_text().count(name) == 1
+
+
+def test_quote_lines_the_desk_could_change_fail_the_check():
+    """Found 24/11/2026: once price books are readable, Salesforce lets a user who can edit a quote change its lines."""
+    ro = {"queryable": True, "createable": False, "updateable": False, "deletable": False}
+    seen = {n: ro for n in org.READ_ONLY_OBJECTS}
+    seen["QuoteLineItem"] = {"queryable": True, "createable": True, "updateable": True, "deletable": True}
+    failed = [t for ok, t in org.check_other_objects(seen) if not ok]
+    assert failed == ["QuoteLineItem: read only (create True, edit True, delete True)"]

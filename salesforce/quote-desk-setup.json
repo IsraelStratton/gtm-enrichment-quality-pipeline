@@ -182,6 +182,9 @@
       ],
       "Product2": [
         "Read"
+      ],
+      "Pricebook2": [
+        "Read"
       ]
     },
     "object_permissions_never": [
@@ -252,7 +255,8 @@
           "ProductCode"
         ]
       }
-    }
+    },
+    "pricebook_note": "Price Books Read was added on 24/11/2026 with Israel's yes, after the first org check: without it Salesforce hides quote lines, price books and price book entries from the desk, and the desk needs each line's list price to work out the real discount. The price book holds only the five made-up products' list prices."
   },
   "desk_profile": {
     "label": "GTM v2 API only",

@@ -19,7 +19,7 @@ Who does what follows Israel's ruling of 23/11/2026 and his brief for this chapt
 | H | Two lines in `.env` | Israel pastes | To do |
 | I | n8n credential "Salesforce quote desk (client credentials)" | COURSES 2ND makes it; Israel pastes the key and secret | Made by COURSES 2ND; waiting for the key and secret from part G |
 | J | Sign the Salesforce CLI in as the admin, for parts B to E and the seed | Israel (a sign-in) | Done 24/11/2026 (alias gtm-v2-admin). It stays signed in until part L |
-| K | Seed the made-up quotes, then check the org | Code chat | To do |
+| K | Seed the made-up quotes, then check the org | Code chat | Seed done 24/11/2026 (5 products, the standard price book switched on, 8 quotes with 12 lines, in Needs Review). Check: 25 of 26. Price Books Read added on Israel's yes so the desk can see quote lines; that also lets it create, edit and delete them, which the check fails on. Waiting on Israel's choice |
 | L | Sign the CLI out | Israel | To do |
 | M | Import and publish the workflow | Code chat | To do |
 | N | One reviewed run | COURSES 2ND opens the pages; Israel makes the choices, or says yes to the Code chat making them | To do |
@@ -87,6 +87,7 @@ Save. Then **Object Settings**:
 | **Opportunities** | **Read** only | **Read**: Amount, Close Date. Nothing else ticked |
 | **Accounts** | **Read** only | Nothing ticked (Account Name needs no tick) |
 | **Products** | **Read** only | Nothing extra |
+| **Price Books** | **Read** only | Nothing (added 24/11/2026 with Israel's yes: without it Salesforce hides quote lines from the desk) |
 
 Some fields have no tick box (Salesforce always lets them be read, or works them out itself); note which ones. Nothing else in the permission set: no system permissions, no other objects, no apps or tabs.
 
