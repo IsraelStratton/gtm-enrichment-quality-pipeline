@@ -9,6 +9,9 @@ For every line the outgoing commits add:
   - no real-looking email address (only example domains are allowed)
   - no Google OAuth client ID or secret
   - no string listed in .prepush-private.local (git-ignored: tool IDs and other private values)
+For the commit being pushed (HEAD):
+  - every live playbook meets its eval bar (scripts/playbook_bar.py, KB-137 A3.4): a playbook
+    change that has not been tested, or that took the eval below its bar, cannot be pushed
 
 Findings name the file or commit, never the value.
 
@@ -119,11 +122,14 @@ def main(argv: list[str] | None = None) -> int:
         findings += check_identity(sha[:7], author, committer)
         findings += check_message(sha[:7], git("log", "-1", "--format=%B", sha))
     findings += scan_added(added_lines_by_file(git("diff", rng.replace("..", "...", 1) if "..." not in rng else rng)), private_values())
+    from playbook_bar import check_all, git_reader
+
+    findings += [f"playbook bar: {x}" for x in check_all(git_reader("HEAD", REPO))]
     print(f"Checked {len(shas)} commit(s) in {rng}.")
     for f in findings:
         print(f"FAIL {f}")
     if not findings:
-        print("PASS no-reply author and committer, no agent lines, no private values in added lines")
+        print("PASS no-reply author and committer, no agent lines, no private values in added lines, every playbook meets its bar")
     return 1 if findings else 0
 
 
