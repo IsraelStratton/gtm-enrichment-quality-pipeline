@@ -92,7 +92,7 @@ Then switch both Zaps off, unless the Pro trial follows straight away (KB-135, s
 
 Israel's yes, 23/11/2026. COURSES 2ND starts the trial and stops if Zapier shows a card field or offers 7 days instead of 14.
 
-**State, 23/11/2026, 16:00.** Trial on, with no card; it ends 07/12/2026. Zap published as version 1, tested with two leads and a wrong key, then switched off. Changes from the steps below, as built: the Code step's input is named `rawBody` (Zapier refused `raw_body`); the approval times out after 7 days; the Tables and Email step tests were skipped. 4 tasks a lead. Zapier's help pages say the Professional trial lasts 14 days and needs no card. Started today, it ends about 07/12/2026, so the Pro Zap is recorded as a short clip inside the trial. What happens to a trial-built Zap afterwards has not been checked.
+**State, 23/11/2026, 16:00.** Trial on, with no card; it ends 07/12/2026. Zap published as version 1, tested with two leads and a wrong key, then switched off. Changes from the steps below, as built: the Code step's input is named `rawBody` (Zapier refused `raw_body`); the approval times out after 7 days; the Tables and Email step tests were skipped. 4 tasks a lead. Zapier's help pages say the Professional trial lasts 14 days and needs no card. Started today, it ends about 07/12/2026, so the Pro Zap was to be recorded as a short clip inside the trial (on 24/11/2026 the clip moved to the wrap; see the dated limit in the chapter 3 notes). What happens to a trial-built Zap afterwards has not been checked.
 
 This version takes the same payload and key as n8n and Make. Zapier's AI writes a note for the owner, Israel approves the note, and only then are the row and the email written.
 
@@ -207,10 +207,12 @@ cd ~/gtm-enrichment-quality-pipeline && .venv/bin/python scripts/fire_slice.py -
 1. The Code chat fires `L-0001` and `L-0002` with the key, and one call with a wrong key.
 2. Israel gets two approval requests by email, reads each AI note, and approves.
 3. Pass when there are 2 records with `written_by` = `zapier-pro`, 2 emails carrying the approved note, and the wrong-key run stopped at the Filter with no task used.
-4. COURSES 2ND notes the tasks used per lead, and records a short clip of the Zap and one run.
+4. COURSES 2ND notes the tasks used per lead. (The clip moved to the wrap on 24/11/2026.)
 5. On 24/11/2026: lead `L-0003`, then way 3 (next section).
 
 ## 24/11/2026: lead L-0003 with Israel's own Approve, then way 3
+
+**State, 24/11/2026, 12:20.** Both parts passed; the record is in the [chapter 3 notes](../../docs/v2/chapter-3-notes.md), setup log. Part 1: Israel approved L-0003 himself, and the owner email carried the approved note. Part 2: one Create Record call through Zapier MCP wrote record 8 (`claude-mcp`), and Zap 2 emailed the owner 10 seconds later. Changes from the steps below: the server had to be reloaded with "Reload servers" in `/mcp` (no Reconnect button); Claude Code rejected the one field-list read, so COURSES 2ND read the field IDs from the Table; the call cost 0 tasks, not 2. A second L-0003 run for the clip was declined, which tested that decline stops the run. **The clip moved to the wrap** (Israel's ruling, 12:14: no clips until the larger initiatives are finished). All Zaps are off, the MCP client is disconnected, and the server is gone from Claude Code. 3 Email by Zapier emails were planned and 2 were sent.
 
 **Who does what.** COURSES 2ND clicks in Zapier: Zaps on and off, opening pages, reading the Table. Israel does the sign-ins, the consent screens, the Approve press and the recording. The Code chat fires the lead, makes the one MCP call, checks the emails and writes the notes.
 
@@ -229,7 +231,7 @@ cd ~/gtm-enrichment-quality-pipeline && .venv/bin/python scripts/fire_slice.py -
 | 5 | Code chat | Find the owner email by its subject and run ID. Check that it carries the approved note | The email matches the run |
 | 6 | COURSES 2ND | Table: the L-0003 record with `written_by` = `zapier-pro` and the same run ID. Zap history: the run is Successful; note its tasks. Switch the Pro Zap **Off** | Reports: record, status, tasks, Pro off |
 
-**The clip (Israel, about 40 seconds).**
+**The clip (Israel, about 40 seconds). Moved to the wrap; these steps are kept for it.**
 
 1. Press Cmd+Shift+5 and choose **Record Selected Portion**. Draw the box over the Chrome page only: leave out the tab strip and the profile picture. Options: Save to Movies; microphone off, unless you narrate.
 2. Start on the approval tab. Read the note for a moment, then press **Approve**.

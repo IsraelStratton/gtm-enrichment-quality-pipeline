@@ -16,7 +16,7 @@ Who does what follows Israel's ruling of 23/11/2026: the Code chat does the comm
 | D | Deploy, create the agent user, publish, activate, run the five prompts | Code chat | Done 24/11/2026: version 4 active; 15 of 15 over three rounds |
 | E | Sign the CLI out | Israel | Done 24/11/2026: no admin login left on the Mac |
 | F | Read the usage again; one look at the agent in Agentforce Studio | COURSES 2ND | Done 24/11/2026 11:15: Service Agent, Active, version 4; [screenshot](init-164-evidence/agentforce-builder-canvas.jpg); no Digital Wallet page, no charge |
-| G | README section and a short clip | Code chat writes; Israel or COURSES 2ND records | Section drafted in [`init-164-notes.md`](init-164-notes.md) for the wrap; clip to do |
+| G | README section and a short clip | Code chat writes; Israel or COURSES 2ND records | Section drafted in [`init-164-notes.md`](init-164-notes.md) for the wrap; clip moved to the wrap (Israel's ruling, 24/11/2026, 12:14: no clips until the larger initiatives are finished) |
 
 ## What the agent is
 
