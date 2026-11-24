@@ -1,6 +1,6 @@
 # Wrap notes: the README, documents kept in step, the control sheet, clean exports, walk-throughs
 
-KB-135 section 0b (the wrap) and KB-137 section 6 (the control sheet, A1.5 to A1.7, and documents in step, A4). Built 24/11/2026 on the `v2` branch. Not in this session, on Israel's ruling: clips, videos and the merge to `main`.
+KB-135 section 0b (the wrap) and KB-137 section 6 (the control sheet, A1.5 to A1.7, and documents in step, A4). Built 24/11/2026 on the `v2` branch. Not in this session, on Israel's ruling: clips, videos and the merge to `main` (the merge followed the same day, on his yes).
 
 ## Done when
 
@@ -14,7 +14,7 @@ KB-135 section 6 item 4, KB-137 section 10 items 2, 3, 5 and 7, KB-138 section 1
 | 4 | A README section for the Agentforce routing explainer (KB-138 section 11 item 4) | Done. The clip waits, with every other clip, for Israel's ruling |
 | 5 | The diagram and the step list are made from the workflow file by a script, and a test checks the README matches a fresh run (A4.2) | Done: [`scripts/build_docs.py`](../../scripts/build_docs.py), [`workflows.md`](workflows.md), `tests/test_build_docs.py` |
 | 6 | A test on every push fails when the rules page and the workflow disagree, either way; removing a rule from either side fails the push (A4.1) | Done: [`scripts/rules_sync.py`](../../scripts/rules_sync.py) in the pre-push check, and `tests/test_rules_sync.py` in CI, with both directions shown |
-| 7 | The control sheet fits one page, every line points to a file, a test or a log row, and it states no legal conclusion (A1.5, A1.6) | Done: [`control-sheet.md`](control-sheet.md), held to it by `tests/test_control_sheet.py`. **Israel's read-through is still to do** (KB-137 section 6) |
+| 7 | The control sheet fits one page, every line points to a file, a test or a log row, and it states no legal conclusion (A1.5, A1.6) | Done: [`control-sheet.md`](control-sheet.md), held to it by `tests/test_control_sheet.py`. Israel's read-through: done 24/11/2026, with one change: the disclosure questions now quote the OAIC's own terms, pinned by a test |
 | 8 | One table matches process, playbook, agent or tool, approval point, owner and eval (A1.7) | Done: the AI register on the control sheet |
 | 9 | Clean exports of the n8n workflows, the Make blueprint and the Zapier builds | Done. Zapier's own export arrived from COURSES 2ND the same afternoon, was cleaned outside the repo, and is in as [`zapier-export.json`](../../slice/zapier/zapier-export.json); a test checks the as-built record against it |
 | 10 | Walk-throughs by role, 90 seconds and five minutes each, opening on the data rules | Done: [`walk-throughs.md`](walk-throughs.md). Spoken wording goes through the Say-Aloud Method on the job-search side |
@@ -75,7 +75,7 @@ KB-135 section 6 item 4, KB-137 section 10 items 2, 3, 5 and 7, KB-138 section 1
 
 ## Still to do, outside this session
 
-- **Israel:** the read-through of the control sheet (KB-137 section 6), and the merge to `main` when ready.
+- **The merge to `main`:** approved by Israel on 24/11/2026 after his read-through, as a fast-forward, keeping `v2` and the history as they are (his ruling).
 - **COURSES 2ND:** the Notion records. Optional: delete the raw Zapier export from Downloads, now that its clean copy is in the repo; and, if wanted, remove the stray field from the start of the Pro Zap's AI prompt before the clip.
 - **After the merge:** the Google app's privacy link moves to `main` before the `v2` branch is deleted.
 - **Clips and the video**, on Israel's ruling: the Zapier Pro approval (the trial ends 07/12/2026), the Agentforce explainer, and the version 2 demo.

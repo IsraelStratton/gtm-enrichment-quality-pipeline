@@ -34,11 +34,11 @@ Workflows with no AI step are not on the register. Their logins are with every o
 
 ## The 10/12/2026 disclosure questions
 
-From 10/12/2026 an Australian privacy policy must say when a computer program uses personal information to make, or substantially help make, a decision that could significantly affect a person ([OAIC](https://www.oaic.gov.au/news/media-centre/new-resources-on-transparency-for-use-of-ai-and-automated-decision-making)). All three tests must be met. Each row gives this build's facts and leaves the legal question open.
+From 10/12/2026 an Australian privacy policy must say when a computer program uses personal information to "make, or do a thing that is substantially and directly related to making, a decision" that "could reasonably be expected to significantly affect the rights or interests of an individual" ([OAIC](https://www.oaic.gov.au/news/media-centre/new-resources-on-transparency-for-use-of-ai-and-automated-decision-making)). All three tests must be met. Each row gives this build's facts, not a legal answer.
 
 | Question it raises | This build's facts | Evidence |
 |---|---|---|
-| Does a program use personal information? | Here, no person's data at all. At an employer, a lead or quote record may hold a person's name or contact details | `tests/test_no_private_data.py::test_no_real_email_addresses_in_tracked_files`; [the enquiries](../../skins/lead-routing/README.md) |
-| Does it make the decision, or substantially help make it? | The AI proposes and a person decides every write. Whether a proposal substantially helps is the legal question | `tests/test_routing_engine.py::test_no_reviewer_name_means_nothing_is_written` |
-| Could the decision significantly affect a person? | The decisions are which sales team gets a company, and whether a quote's terms are approved | [Routing agent](role-cards/routing-agent.md) and [desk](role-cards/quote-desk-agents.md) role cards |
-| What would the privacy policy say, and who decides? | Not decided here. At an employer, their privacy lead, with this register as the input | [PRIVACY.md](../../PRIVACY.md) covers only this demo's Google app |
+| Does a program use personal information? | Here, none. At an employer, a lead or quote may hold a person's name or contact details | `tests/test_no_private_data.py::test_no_real_email_addresses_in_tracked_files`; [the enquiries](../../skins/lead-routing/README.md) |
+| Does it make the decision, or do a thing "substantially and directly related to making" it? | The AI proposes; a person decides every write. Whether proposing counts is the legal question | `tests/test_routing_engine.py::test_no_reviewer_name_means_nothing_is_written` |
+| Could the decision "reasonably be expected to significantly affect the rights or interests of an individual"? | Which sales team gets a company; whether a quote's terms are approved | [Routing agent](role-cards/routing-agent.md) and [desk](role-cards/quote-desk-agents.md) role cards |
+| What would the policy say, and who decides? | Not decided here. At an employer, their privacy lead, with this register as the input | [PRIVACY.md](../../PRIVACY.md) covers only this demo's Google app |

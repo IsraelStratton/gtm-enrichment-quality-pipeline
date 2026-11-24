@@ -97,6 +97,14 @@ def test_it_states_no_legal_conclusion_and_names_who_would_decide():
     assert "All three tests must be met" in TEXT
 
 
+def test_the_disclosure_duty_is_in_the_oaics_own_terms():
+    """Israel's read-through, 24/11/2026: quote the OAIC, do not paraphrase it."""
+    duty = TEXT.split("## The 10/12/2026 disclosure questions", 1)[1]
+    assert '"make, or do a thing that is substantially and directly related to making, a decision"' in duty
+    assert '"could reasonably be expected to significantly affect the rights or interests of an individual"' in duty
+    assert "substantially help" not in duty and "significantly affect a person" not in duty
+
+
 def test_the_checks_catch_a_line_with_no_evidence_and_a_broken_pointer():
     assert pointers("| A row | with | only words |") == []
     assert pointers("| A row | with [a source](https://example.org) |") == []
