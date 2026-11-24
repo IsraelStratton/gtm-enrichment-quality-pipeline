@@ -51,3 +51,10 @@ Tests pass; the eval on the 20 cases still meets its bar; the version is raised.
 3. The AI reads the special terms and the rep's reason, and proposes approve or reject.
 4. A person decides every quote, with a reason.
 5. The quote carries a stamp back to the log, and the owner gets the reason and a draft reply.
+
+## Change log
+
+| Version | Date | Change | Why |
+|---|---|---|---|
+| 1.0.0 | 24/11/2026 | First version | Chapter 5 |
+| 1.0.1 | 24/11/2026 | **Not kept: failed the bar, rolled back to 1.0.0 the same hour.** The reject-draft rule described what to say instead of giving the words ("it promises no price, discount, term or date"), and both messages were to be in the agent's own words | Tried on Israel's yes to stop a false mark: the 1.0.0 rule gave exact words, the agents copied them, and the guard that flags eight words in a row from the instructions marked Q-0011 in run `n8n-8794` and 19 of 180 eval triages. The marks fell from 34 to 12, but the kept design then rejected Q-0019 in 3 of 3 rounds: it read the attacker's request to promise 40% as a breach of the quote. The eval caught it before any live run. Text and results: `eval/playbook-1.0.1-not-kept.md`, `eval/results-1.0.1-not-kept.md` |

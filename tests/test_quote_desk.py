@@ -549,3 +549,17 @@ def test_the_results_file_names_the_kept_design_and_every_figure_is_made_by_the_
     s = {d: v["summary"] for d, v in res["designs"].items()}
     assert s["one_prompt"]["handoffs_per_quote"] == 0 and s["one_prompt"]["calls_per_quote"] == 1
     assert 0 < s["fixed_chain"]["handoffs_per_quote"] <= 1 and s["agent_team"]["handoffs_per_quote"] >= 2
+
+
+def test_the_playbook_change_that_failed_the_bar_is_kept_as_evidence_and_is_not_live():
+    """1.0.1 (24/11/2026) failed the bar and was rolled back: its text and results stay beside the live ones."""
+    import hashlib
+
+    ev = REPO / "skins/quote-desk/eval"
+    text = (ev / "playbook-1.0.1-not-kept.md").read_text(encoding="utf-8")
+    res = json.loads((ev / "results-1.0.1-not-kept.json").read_text(encoding="utf-8"))
+    assert res["kept"] is None and res["playbook"]["version"] == "1.0.1"
+    assert res["playbook"]["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert (ev / "results-1.0.1-not-kept.md").read_text(encoding="utf-8") == quote_desk.results_markdown(copy.deepcopy(res))
+    live = json.loads((ev / "results.json").read_text(encoding="utf-8"))
+    assert live["playbook"]["version"] != "1.0.1" and live["kept"] == "one_prompt"
