@@ -246,3 +246,19 @@ def test_promote_swaps_in_a_candidate_that_met_the_bar(sandbox):
     assert route_eval.main(["promote", "--candidate", str(cand), "--results", "results-candidate"]) == 0
     assert live.read_text(encoding="utf-8") == text
     assert json.loads((folder / "results.json").read_text(encoding="utf-8")) == out
+
+
+def test_promote_keeps_the_replaced_results_under_their_version(sandbox):
+    folder, live = sandbox
+    old = synthetic(models=("claude-haiku-5-5", "claude-sonnet-5-5"))
+    old["playbook"]["version"] = "0.9.0"
+    save(folder, "results", old)
+    cand = folder / "playbook-candidate.md"
+    cand.write_text((REPO / route_eval.REL["playbook"]).read_text(encoding="utf-8"), encoding="utf-8")
+    save(folder, "results-candidate", synthetic())
+    assert route_eval.main(["promote", "--candidate", str(cand), "--results", "results-candidate"]) == 0
+    assert json.loads((folder / "results-0.9.0.json").read_text(encoding="utf-8")) == old
+    assert (folder / "results-0.9.0.md").read_text(encoding="utf-8") == route_eval.results_markdown(old)
+    save(folder, "results-candidate", synthetic())  # a second promote must not overwrite an archive
+    (folder / "results.json").write_text(json.dumps(old), encoding="utf-8")
+    assert route_eval.main(["promote", "--candidate", str(cand), "--results", "results-candidate"]) == 1

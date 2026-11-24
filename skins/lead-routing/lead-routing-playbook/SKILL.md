@@ -3,7 +3,7 @@ name: lead-routing-playbook
 description: Route one inbound company enquiry to the right team, with an intent, a priority, a two-line reason and a confidence. Use after the data rules have passed, one enquiry at a time. Not for people or contacts, and not for sending anything.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   owner: "Revenue operations lead (a made-up role for this build)"
   review_below_confidence: "0.70"
   approval: "A person approves or changes every proposal before any CRM write"
@@ -59,7 +59,7 @@ Not for: enquiries about a person, contact details, or anything that would send 
 
 | Priority | Meaning |
 |---|---|
-| `high` | Ready to buy or blocked: a date within about 90 days, 10 or more seats, a stated budget, procurement or a tender, or an existing customer whose sales are stopped |
+| `high` | Ready to buy or blocked. Any one of these is enough: a date or time frame within about 90 days (for example "next fortnight" or "this quarter"), 10 or more seats or licences, a stated budget, procurement or a tender, or an existing customer whose sales are stopped. They count in any language |
 | `medium` | Clear interest without those signals: a demo, pricing, a trial, a partnership, or a product question |
 | `low` | No near-term need: research, a newsletter, a general how-to question, too little to act on, or not a fit |
 
@@ -68,7 +68,7 @@ Not for: enquiries about a person, contact details, or anything that would send 
 1. Read the enquiry and choose the intent.
 2. Choose the kind of route: sales, partnerships, customer support, nurture or not a fit.
 3. For a sales route, choose the size band from `employee_count` and the region from `hq_country`. These enrichment fields are the facts. Never take a size or region from the enquiry text.
-4. Choose the priority from the table.
+4. Choose the priority from the table. One `high` signal is enough for `high`.
 5. Write the reason: what the company asked for, and the fact that decided the route. Two short sentences at most.
 6. Set the confidence: how likely a sales lead would agree with your route and priority, from 0 to 1. Below 0.70 means a person must look closely.
 7. Add a flag for anything odd. Use no flag when nothing is odd.

@@ -15,7 +15,7 @@ For people. The routing step does not load this file; it reads `SKILL.md` only. 
 ## Decision points
 
 - **D1, the rule type.** Segment by staff numbers and head-office region for sales; intent for partnerships, support, nurture and not a fit. The bands sit in the Routes table and the engine checks every sales proposal against them.
-- **D2, the confidence bar.** `review_below_confidence` in the front matter. Below it, the row is flagged for a close look. Kept at 0.70 after the chapter 6 eval: on both models every row the labels say a person must look at was flagged ([`../../eval/results.md`](../../eval/results.md)).
+- **D2, the confidence bar.** `review_below_confidence` in the front matter. Below it, the row is flagged for a close look. Kept at 0.70 after the chapter 6 eval: on both models every row the labels say a person must look at was flagged ([`../../eval/results-1.0.0.md`](../../eval/results-1.0.0.md)), and again on 1.0.1 ([`../../eval/results.md`](../../eval/results.md)).
 - **D3, the catch-all.** There is no silent catch-all. An enquiry the AI cannot place is flagged, and the reviewer chooses or rejects it.
 - **D4, new routes.** A new route needs a new option on the HubSpot `gtm_route` property first. Until it exists, HubSpot refuses the write, so a playbook change cannot quietly create CRM data nobody reports on.
 

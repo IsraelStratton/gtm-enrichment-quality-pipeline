@@ -1,5 +1,5 @@
 {
-  "made_at": "2026-11-24T04:37:26Z",
+  "made_at": "2026-11-24T04:47:16Z",
   "read_from": "the run log (schema gtm_v2) through the pipeline login gtm_v2_pipeline",
   "routing_by_model": [
     {
@@ -13,10 +13,10 @@
     {
       "model": "claude-haiku-5-5",
       "source": "python",
-      "decisions": 280,
-      "input_tokens": 942360,
-      "output_tokens": 32122,
-      "total_cost_usd": "0.11029700"
+      "decisions": 400,
+      "input_tokens": 1352280,
+      "output_tokens": 46252,
+      "total_cost_usd": "0.15835400"
     },
     {
       "model": "claude-sonnet-5-5",
@@ -31,50 +31,50 @@
     {
       "model": "claude-haiku-5-5",
       "route": "customer_support",
-      "decisions": 17,
-      "total_cost_usd": "0.00663550"
+      "decisions": 23,
+      "total_cost_usd": "0.00900550"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "disqualify",
-      "decisions": 44,
-      "total_cost_usd": "0.01787710"
+      "decisions": 60,
+      "total_cost_usd": "0.02453600"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "enterprise_anz",
-      "decisions": 66,
-      "total_cost_usd": "0.02632810"
+      "decisions": 96,
+      "total_cost_usd": "0.03849930"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "enterprise_global",
-      "decisions": 22,
-      "total_cost_usd": "0.00865380"
+      "decisions": 34,
+      "total_cost_usd": "0.01343930"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "mid_market",
-      "decisions": 77,
-      "total_cost_usd": "0.03020720"
+      "decisions": 98,
+      "total_cost_usd": "0.03856690"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "nurture",
-      "decisions": 33,
-      "total_cost_usd": "0.01264610"
+      "decisions": 44,
+      "total_cost_usd": "0.01693470"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "partnerships",
-      "decisions": 24,
-      "total_cost_usd": "0.00931200"
+      "decisions": 33,
+      "total_cost_usd": "0.01286850"
     },
     {
       "model": "claude-haiku-5-5",
       "route": "smb",
-      "decisions": 36,
-      "total_cost_usd": "0.01398100"
+      "decisions": 51,
+      "total_cost_usd": "0.01984760"
     },
     {
       "model": "claude-sonnet-5-5",

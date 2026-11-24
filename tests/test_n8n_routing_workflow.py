@@ -244,7 +244,8 @@ def test_demo_file_runs_through_every_code_node():
     # Guard rails: the attack rows are flagged, and so is the row with no headcount.
     flagged = {p["lead_id"] for p in r["proposals"] if p["needs_review"]}
     assert {"L-0034", "L-0036", "L-0025"} <= flagged
-    assert all(p["latency_ms"] is not None and p["playbook_version"] == "1.0.0" for p in r["proposals"])
+    live_version = re.search(r'version: "([0-9.]+)"', (REPO / "skins/lead-routing/lead-routing-playbook/SKILL.md").read_text(encoding="utf-8"))[1]
+    assert all(p["latency_ms"] is not None and p["playbook_version"] == live_version for p in r["proposals"])
     # The review page has one required choice per proposal, flagged rows first.
     rows = [f for f in r["review"]["form_fields"] if f.get("fieldType") == "dropdown"]
     assert len(rows) == 12 and rows[0]["fieldLabel"].startswith("Check:")

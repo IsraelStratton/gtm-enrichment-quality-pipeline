@@ -19,6 +19,7 @@ from routing_engine import PLAYBOOK, Engine, EngineError, Ref  # noqa: E402
 pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 
 TEXT = PLAYBOOK.read_text(encoding="utf-8")
+VERSION = re.search(r'version: "([0-9.]+)"', TEXT)[1]  # the live playbook's, so a promoted version needs no test edit
 ENQUIRIES = list(csv.DictReader((REPO / "skins/lead-routing/enquiries.csv").open(encoding="utf-8")))
 MODEL = "claude-haiku-5-5"
 
@@ -67,7 +68,7 @@ def check(eng, the_lead, response, pbtext=TEXT):
 
 
 def test_playbook_parses_with_its_routes_bands_and_bar(pb):
-    assert (pb["name"], pb["version"], pb["threshold"]) == ("lead-routing-playbook", "1.0.0", 0.7)
+    assert (pb["name"], pb["version"], pb["threshold"]) == ("lead-routing-playbook", VERSION, 0.7)
     routes = {r["route"]: r for r in pb["routes"]}
     assert list(routes) == ["enterprise_anz", "enterprise_global", "mid_market", "smb", "partnerships",
                             "customer_support", "nurture", "disqualify"]
@@ -90,7 +91,7 @@ def test_sha256_matches_hashlib_on_edge_lengths_and_unicode(eng, text):
 
 
 @pytest.mark.parametrize("broken, message", [
-    (lambda t: t.replace('version: "1.0.0"', 'version: "one"'), "metadata.version"),
+    (lambda t: t.replace(f'version: "{VERSION}"', 'version: "one"'), "metadata.version"),
     (lambda t: t.replace("| 50-249 |", "| fifty |"), "employees"),
     (lambda t: t.replace("| `size_conflict` |", "| `size_mismatch` |"), "guard flags"),
     (lambda t: t.replace("`smb`", "`mid_market`", 1), "listed twice"),
@@ -147,7 +148,7 @@ def test_request_has_fixed_output_shape_from_the_playbook(eng, pb):
     assert schema["properties"]["route"]["enum"] == [r["route"] for r in pb["routes"]]
     assert set(schema["properties"]["flags"]["items"]["enum"]) == set(pb["flags"])
     assert req["system"].startswith("You are the routing step")
-    assert '<playbook name="lead-routing-playbook" version="1.0.0">' in req["system"]
+    assert f'<playbook name="lead-routing-playbook" version="{VERSION}">' in req["system"]
     assert "## Routes" in req["system"] and "references/governance.md" in req["system"]
 
 
@@ -193,7 +194,7 @@ def test_a_good_answer_passes_with_no_review(eng):
     assert p["output_valid"] and not p["needs_review"] and p["review_reasons"] == []
     assert (p["route"], p["priority"], p["confidence"]) == ("enterprise_anz", "high", 0.9)
     assert (p["input_tokens"], p["output_tokens"], p["api_request_id"], p["latency_ms"]) == (3400, 110, "req_test", 1200)
-    assert p["playbook_version"] == "1.0.0" and len(p["playbook_sha256"]) == 64
+    assert p["playbook_version"] == VERSION and len(p["playbook_sha256"]) == 64
 
 
 @pytest.mark.parametrize("response, reason", [
@@ -298,7 +299,7 @@ def test_every_write_carries_a_stamp_back_to_the_log(eng):
     assert len(writes) == sum(d["action"] != "rejected" for d in decisions.values()) == 2
     for w in writes:
         stamp = w["properties"]["gtm_decision_stamp"]
-        assert re.fullmatch(r"gtm-v2 D-test-\d{2} \| claude-haiku-5-5 \| lead-routing-playbook@1\.0\.0 \| (approved|changed) by reviewer-01 \| 2026-11-23T05:10:00Z", stamp)
+        assert re.fullmatch(r"gtm-v2 D-test-\d{2} \| claude-haiku-5-5 \| lead-routing-playbook@" + re.escape(VERSION) + r" \| (approved|changed) by reviewer-01 \| 2026-11-23T05:10:00Z", stamp)
         assert decisions[stamp.split()[1]]["stamp"] == stamp
         assert w["idProperty"] == "clay_domain_key" and w["id"] == w["properties"]["clay_domain_key"]
 

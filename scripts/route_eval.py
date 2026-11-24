@@ -402,11 +402,21 @@ def promote(args) -> int:
         return path.read_text(encoding="utf-8") if path.exists() else None
 
     findings = check_routing(read)
+    live_json, live_md = EVAL / f"{RESULTS}.json", EVAL / f"{RESULTS}.md"
+    archive = None
+    if live_json.exists():
+        archive = f"results-{json.loads(live_json.read_text(encoding='utf-8'))['playbook']['version']}"
+        if (EVAL / f"{archive}.json").exists() or (EVAL / f"{archive}.md").exists():
+            findings.append(f"{archive}.json or .md already exists: the replaced results would be lost")
     if findings:
         for f in findings:
             print(f"REFUSED {f}")
         print("Nothing changed: the live playbook and results.json are as they were.")
         return 1
+    if archive:  # the replaced version's eval stays in the repository as the record
+        shutil.copyfile(live_json, EVAL / f"{archive}.json")
+        shutil.copyfile(live_md, EVAL / f"{archive}.md")
+        print(f"Kept the replaced results as {archive}.json and .md.")
     PLAYBOOK.write_text(staged[REL["playbook"]], encoding="utf-8")
     shutil.copyfile(res_json, EVAL / f"{RESULTS}.json")
     shutil.copyfile(res_md, EVAL / f"{RESULTS}.md")

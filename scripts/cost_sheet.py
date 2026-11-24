@@ -162,7 +162,7 @@ def render(snap: dict, prices: dict, agentforce: dict) -> str:
         L.append(f"- **Model choice.** On routing, `{m}` costs {avg[m] / avg[LIVE_MODEL]:.0f} times as much as `{LIVE_MODEL}` per "
                  f"decision (US${usd(avg[m], 8)} against US${usd(avg[LIVE_MODEL], 8)}, every run of each in the run log). The "
                  "chapter 6 eval found both meet the bar, so the live workflow keeps the cheaper one "
-                 "([`results.md`](../../skins/lead-routing/eval/results.md)).")
+                 "([`results-1.0.0.md`](../../skins/lead-routing/eval/results-1.0.0.md)).")
     fc = agentforce["flex_credits"]
     credits = fc["credits_per_action"]["standard_or_custom_action"]
     action = D(credits) * D(fc["price_per_credit"])
