@@ -8,7 +8,7 @@
 --admin (chapter-5-build.md, part K). The desk user can read and decide quotes but cannot create
 them, on purpose, so the made-up data is written once by the admin, through the Salesforce CLI
 login Israel makes with `sf org login web --alias gtm-v2-admin` (as in INIT-164). This script
-reads that login's token from the CLI and never prints it. It writes:
+has the CLI make each call, so the admin's token never leaves the CLI. It writes:
   - the five products in salesforce/quote-desk-setup.json, each with a standard price;
   - one opportunity per demo case, named "GTM v2 quote desk: Q-00NN", on the made-up Account
     the case names (made in chapter 4), with the case's amount and close date;
@@ -37,7 +37,7 @@ from urllib.parse import quote
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from salesforce_client import ConfigError, SalesforceClient, SalesforceError, _error  # noqa: E402
+from salesforce_client import ConfigError, SalesforceClient, SalesforceError  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 SETUP = json.loads((REPO / "salesforce" / "quote-desk-setup.json").read_text(encoding="utf-8"))
@@ -78,29 +78,50 @@ def plan(cases: list[dict], today: date) -> list[dict]:
 
 
 class Admin:
-    """The admin's REST session, from the Salesforce CLI. The token stays in this object."""
+    """The admin's REST calls, made by the Salesforce CLI itself (`sf api request rest`), so the
+    admin's token never leaves the CLI: this script never sees it. Bodies go in on stdin, so no
+    value is on a command line."""
 
-    def __init__(self, alias: str, session: requests.Session | None = None):
-        sf = shutil.which("sf")
-        if not sf:
+    def __init__(self, alias: str, runner=subprocess.run):
+        self.sf = shutil.which("sf")
+        if not self.sf:
             raise ConfigError("the Salesforce CLI (sf) is not installed")
-        out = subprocess.run([sf, "org", "display", "--target-org", alias, "--json"], capture_output=True, text=True, check=False)
+        self.alias, self.runner = alias, runner
+        out = runner([self.sf, "org", "display", "--target-org", alias, "--json"], capture_output=True, text=True, check=False)
         try:
             result = json.loads(out.stdout).get("result") or {}
         except json.JSONDecodeError:
             result = {}
-        if not result.get("accessToken") or not result.get("instanceUrl"):
-            raise ConfigError(f"the CLI has no login called {alias}: Israel runs `sf org login web --alias {alias}` first")
-        self._token = result["accessToken"]
-        self.base = result["instanceUrl"].rstrip("/") + f"/services/data/{API}"
-        self.session = session or requests.Session()
+        if result.get("connectedStatus") != "Connected":
+            raise ConfigError(f"the CLI has no live login called {alias}: Israel runs `sf org login web --alias {alias}` first")
+        self.username = result.get("username") or ""  # kept for queries, never printed
+
+    @staticmethod
+    def parse(stdout: str) -> tuple[int, object]:
+        """The CLI's --include output: a status line, the headers, then the body (CLI 2.159 puts no blank
+        line between them, older ones do), so the body starts at the first line that opens JSON."""
+        lines = stdout.replace("\r\n", "\n").split("\n")
+        first = lines[0].split() if lines else []
+        status = int(first[1]) if len(first) > 1 and first[1].isdigit() else 0
+        start = next((i for i, line in enumerate(lines[1:], 1) if line.startswith(("{", "["))), len(lines))
+        body = "\n".join(lines[start:])
+        try:
+            payload = json.loads(body) if body.strip() else None
+        except json.JSONDecodeError:
+            payload = body.strip()[:300]
+        return status, payload
 
     def call(self, method: str, path: str, body=None, ok=(200, 201, 204)):
-        resp = self.session.request(method, self.base + path, json=body, timeout=30,
-                                    headers={"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"})
-        if resp.status_code not in ok:
-            raise _error(resp, f"{method} {path.split('?')[0]}")
-        return resp.json() if resp.content else None
+        args = [self.sf, "api", "request", "rest", f"/services/data/{API}{path}", "--target-org", self.alias, "--method", method, "--include"]
+        if body is not None:
+            args += ["--body", "-"]
+        out = self.runner(args, input=json.dumps(body) if body is not None else None, capture_output=True, text=True, check=False)
+        status, payload = self.parse(out.stdout)
+        if status not in ok:
+            err = payload[0] if isinstance(payload, list) and payload and isinstance(payload[0], dict) else {}
+            code = err.get("errorCode")
+            raise SalesforceError(f"{method} {path.split('?')[0]}: {code + ': ' if code else ''}{err.get('message') or f'HTTP {status}'}"[:300], status, code)
+        return payload
 
     def query(self, soql: str) -> list[dict]:
         return self.call("GET", f"/query?q={quote(soql)}")["records"]

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GTM_Rep_Note__c</fullName>
+    <description>The quote owner's note to the approver: why this quote needs an exception. Data for the desk, never instructions.</description>
+    <label>GTM rep note</label>
+    <length>2000</length>
+    <trackHistory>false</trackHistory>
+    <type>LongTextArea</type>
+    <visibleLines>4</visibleLines>
+</CustomField>

@@ -84,7 +84,13 @@ Drawn by hand for these notes. Every message goes to the build account's own inb
 - **No step can send to a customer**: only nine node types, six HTTP calls to five fixed endpoints, two mail steps that send only a message the engine built for the build account's own inbox; with Q-0019's customer address in the rep note, all ten emails of the run still go to the own inbox.
 - **n8n can read the playbook** at `/home/node/gtm-skins/quote-desk/quote-desk-playbook/SKILL.md` through the read-only mount, and cannot write there. The publish script finds every credential the workflow names except the desk's Salesforce one, which part I makes.
 
-### Waiting on the org (parts 0 to L, then M to O)
+### 24/11/2026, the org setup, parts 0 to E
+
+COURSES 2ND did parts 0 and A and made field 1 by hand, then asked for the rest through the CLI. The Code chat wrote parts B to D as metadata from `quote-desk-setup.json` ([`salesforce/quote-desk/`](../../salesforce/quote-desk/)), validated and deployed them with the admin CLI login (11 of 11 components), made the desk user with `scripts/make_desk_user.py`, and read everything back: the seven fields as specified, field-level security on System Administrator and the permission set only, all seven on the Quote Layout; the profile with API Enabled and API Only User; the permission set with no licence and no system permission, Quote read and edit, Opportunity, Account and Product read, edit on Status and the two desk fields only, and no contact, email, phone or fax; the user active, never signed in, on that profile with that set. Salesforce licences 3 of 4 used; nothing bought.
+
+**Found on the way:** Salesforce CLI 2.159 no longer hands its access token to `sf org display`; the field holds a notice. The seed and the user script now have the CLI make each call (`sf api request rest`, body on stdin), so no script ever holds the admin's token. Its `--include` output has no blank line between the headers and the body, so the reader starts the body at the first line that opens JSON.
+
+### Waiting on the org (parts G to I, then K to O)
 
 The setup check, the seed, the publish, one reviewed run with both approvals and rejections, and `check_desk_run.py --latest --salesforce`. This section is filled in when they are done.
 

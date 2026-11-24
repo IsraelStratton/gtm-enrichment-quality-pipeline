@@ -67,14 +67,42 @@ def test_the_seed_plan_writes_only_made_up_company_data_for_the_demo_cases():
     assert seed.soql_text("O'Brien") == "'O\\'Brien'"
 
 
-def test_the_seed_reads_the_admin_token_from_the_cli_and_stops_without_a_login(monkeypatch):
-    class Out:
-        stdout = json.dumps({"status": 1, "result": {}})
+class FakeCli:
+    """Stands in for the sf CLI: `org display`, then each `api request rest` call with its body on stdin."""
 
+    def __init__(self, replies, connected=True):
+        self.replies, self.connected, self.calls = list(replies), connected, []
+
+    def __call__(self, args, input=None, **kw):
+        class Out:
+            pass
+
+        o = Out()
+        if args[1:3] == ["org", "display"]:
+            o.stdout = json.dumps({"status": 0, "result": {"connectedStatus": "Connected", "username": "admin@x.example"} if self.connected else {}})
+        else:
+            self.calls.append((args, input))
+            o.stdout = self.replies.pop(0)
+        return o
+
+
+def test_the_seed_stops_without_a_live_cli_login(monkeypatch):
     monkeypatch.setattr(seed.shutil, "which", lambda name: "/usr/bin/sf")
-    monkeypatch.setattr(seed.subprocess, "run", lambda *a, **k: Out())
     with pytest.raises(ConfigError, match="sf org login web --alias gtm-v2-admin"):
-        seed.Admin("gtm-v2-admin")
+        seed.Admin("gtm-v2-admin", runner=FakeCli([], connected=False))
+
+
+def test_the_admin_calls_go_through_the_cli_with_the_body_on_stdin_and_no_token(monkeypatch):
+    monkeypatch.setattr(seed.shutil, "which", lambda name: "/usr/bin/sf")
+    cli = FakeCli(["HTTP/1.1 201\ncontent-type: application/json\nserver: sfdcedge\n{\n    \"id\": \"01t1\",\n    \"success\": true\n}",
+                   'HTTP/1.1 400\n\n[{"errorCode": "INVALID_FIELD", "message": "No such column"}]'])
+    admin = seed.Admin("gtm-v2-admin", runner=cli)
+    assert admin.call("POST", "/sobjects/Product2", {"Name": "x"}) == {"id": "01t1", "success": True}
+    args, stdin = cli.calls[0]
+    assert args[:4] == ["/usr/bin/sf", "api", "request", "rest"] and "--body" in args and args[args.index("--body") + 1] == "-"
+    assert json.loads(stdin) == {"Name": "x"} and not any("Bearer" in a or "token" in a.lower() for a in args)
+    with pytest.raises(seed.SalesforceError, match="INVALID_FIELD: No such column"):
+        admin.call("GET", "/query?q=x")
 
 
 # ---------------------------------------------------------------- the org check's rules
@@ -204,3 +232,65 @@ def test_the_publish_script_knows_the_quote_desk():
     wf = json.loads((REPO / "n8n/workflow-v2-quote-desk.json").read_text(encoding="utf-8"))
     body = publish.request_body(wf, None, "Start Quote Desk")
     assert re.match(r"^[0-9a-f-]{36}$", next(n for n in body["nodes"] if n["name"] == "Start Quote Desk")["webhookId"])
+
+
+def test_the_cli_output_is_read_with_or_without_a_blank_line_after_the_headers():
+    assert seed.Admin.parse("HTTP/1.1 204\ndate: x\n") == (204, None)
+    assert seed.Admin.parse("HTTP/1.1 200\ndate: x\n\n{\"a\": 1}") == (200, {"a": 1})
+    assert seed.Admin.parse("HTTP/1.1 200\ndate: x\n[\n  1\n]") == (200, [1])
+
+
+# ---------------------------------------------------------------- the metadata (parts B to D) and the user (part E)
+
+import build_quote_desk_metadata as meta  # noqa: E402
+import make_desk_user  # noqa: E402
+
+SRC = REPO / "salesforce/quote-desk/force-app/main/default"
+
+
+def test_the_metadata_is_made_from_the_setup_file_and_up_to_date():
+    assert meta.main(["--check"]) == 0
+    for f in SETUP["custom_fields"]:
+        text = (SRC / f"objects/Quote/fields/{f['api_name']}.field-meta.xml").read_text(encoding="utf-8")
+        assert f"<label>{f['label']}</label>" in text and f"<description>{f['description']}</description>" in text
+        kind = {"Text": "Text", "Number": "Number", "Text Area (Long)": "LongTextArea"}[f["setup_type"]]
+        assert f"<type>{kind}</type>" in text
+
+
+def test_the_permission_set_metadata_grants_exactly_the_desks_reach():
+    text = (SRC / "permissionsets/GTM_v2_Quote_Desk.permissionset-meta.xml").read_text(encoding="utf-8")
+    edits = re.findall(r"<editable>true</editable>\s*<field>([^<]+)</field>", text)
+    assert sorted(edits) == ["Quote.GTM_Desk_Reason__c", "Quote.GTM_Desk_Stamp__c", "Quote.Status"]
+    for never in ("Quote.Email", "Quote.Phone", "Quote.Fax", "Quote.ContactId"):
+        assert never not in text
+    assert "<license>" not in text and "<userPermissions>" not in text
+    objects = dict(re.findall(r"<objectPermissions>([\s\S]*?)<object>(\w+)</object>", text)[i][::-1] for i in range(4))
+    for obj, body in objects.items():
+        on = set(re.findall(r"<(\w+)>true</\1>", body))
+        assert on == ({"allowRead", "allowEdit"} if obj == "Quote" else {"allowRead"}), obj
+
+
+def test_the_two_profile_files_are_partial_on_purpose():
+    admin = (SRC / "profiles/Admin.profile-meta.xml").read_text(encoding="utf-8")
+    assert set(re.findall(r"<field>([^<]+)</field>", admin)) == {f"Quote.{f['api_name']}" for f in SETUP["custom_fields"]}
+    assert "<userPermissions>" not in admin and "<objectPermissions>" not in admin
+    desk = (SRC / "profiles/GTM v2 API only.profile-meta.xml").read_text(encoding="utf-8")
+    assert re.findall(r"<name>(\w+)</name>", desk) == ["ApiEnabled", "ApiUserOnly"] and "<fieldPermissions>" not in desk
+
+
+def test_the_layout_gets_one_desk_section_however_often_it_is_built():
+    layout = (SRC / "layouts/Quote-Quote Layout.layout-meta.xml").read_text(encoding="utf-8")
+    again = meta.with_desk_section(layout)
+    assert again == layout and layout.count("<label>GTM v2 quote desk</label>") == 1
+    assert all(f"<field>{f['api_name']}</field>" in layout for f in SETUP["custom_fields"])
+
+
+def test_the_desk_username_is_made_to_the_pattern_and_kept_out_of_the_repo(tmp_path):
+    name = make_desk_user.new_username()
+    assert re.match(SETUP["desk_user"]["username_pattern"], name)
+    env, private = tmp_path / ".env", tmp_path / "private"
+    env.write_text("SALESFORCE_DESK_USER=\nOTHER=1\n")
+    make_desk_user.save_username(name, env, private)
+    make_desk_user.save_username(name, env, private)
+    assert f"SALESFORCE_DESK_USER={name}\n" in env.read_text() and env.read_text().count("SALESFORCE_DESK_USER") == 1
+    assert private.read_text().count(name) == 1

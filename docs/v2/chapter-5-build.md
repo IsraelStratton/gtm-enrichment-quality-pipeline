@@ -8,24 +8,26 @@ Who does what follows Israel's ruling of 23/11/2026 and his brief for this chapt
 
 | Part | What | Who | State |
 |---|---|---|---|
-| 0 | Read the org first: licences, sharing defaults, quote statuses | COURSES 2ND | To do |
-| A | Switch Quotes on | COURSES 2ND | To do |
-| B | Seven custom fields on Quote | COURSES 2ND | To do |
-| C | Profile "GTM v2 API only" | COURSES 2ND | To do |
-| D | Permission set "GTM v2 quote desk" | COURSES 2ND | To do |
-| E | The API-only desk user | COURSES 2ND (Israel types his own email address) | To do |
-| F | Sharing for the seeded opportunities (only if part 0 says so) | COURSES 2ND | To do |
+| 0 | Read the org first: licences, sharing defaults, quote statuses | COURSES 2ND | Done 24/11/2026; read again by the Code chat: Salesforce licences 2 of 4 used before part E, Salesforce Integration 1 of 1; Opportunity default access Public Read/Write; Quote Status holds Needs Review, Approved and Rejected |
+| A | Switch Quotes on | COURSES 2ND | Done 24/11/2026 (Quotes list on four Opportunity layouts) |
+| B | Seven custom fields on Quote | COURSES 2ND made field 1; the Code chat made 2 to 7 through the CLI | Done 24/11/2026, read back: all seven as specified; field-level security on System Administrator and the permission set only; all on the Quote Layout, six in a new "GTM v2 quote desk" section |
+| C | Profile "GTM v2 API only" | COURSES 2ND cloned it; the Code chat set the two permissions through the CLI | Done 24/11/2026, read back: API Enabled and API Only User on; Salesforce licence |
+| D | Permission set "GTM v2 quote desk" | Code chat, through the CLI | Done 24/11/2026, read back: no licence, no system permission; Quote read and edit; Opportunity, Account, Product read; edit on Status and the two desk fields only; no contact, email, phone or fax |
+| E | The API-only desk user | Code chat, through the CLI (`scripts/make_desk_user.py`; Israel's own address copied inside the org from his admin user) | Done 24/11/2026, read back: GTM Quote Desk, active, never signed in, profile GTM v2 API only, permission set assigned; username in `.env` and the private list only. Salesforce licences 3 of 4 used |
+| F | Sharing for the seeded opportunities (only if part 0 says so) | COURSES 2ND | Not needed: Opportunity default access is Public Read/Write |
 | G | External Client App "GTM v2 quote desk (n8n)" | COURSES 2ND; Israel passes the verification code and copies the key and secret | To do |
 | H | Two lines in `.env` | Israel pastes | To do |
-| I | n8n credential "Salesforce quote desk (client credentials)" | COURSES 2ND makes it; Israel pastes the key and secret | To do |
-| J | Sign the Salesforce CLI in as the admin, for the seed only | Israel (a sign-in) | To do |
+| I | n8n credential "Salesforce quote desk (client credentials)" | COURSES 2ND makes it; Israel pastes the key and secret | Made by COURSES 2ND; waiting for the key and secret from part G |
+| J | Sign the Salesforce CLI in as the admin, for parts B to E and the seed | Israel (a sign-in) | Done 24/11/2026 (alias gtm-v2-admin). It stays signed in until part L |
 | K | Seed the made-up quotes, then check the org | Code chat | To do |
 | L | Sign the CLI out | Israel | To do |
 | M | Import and publish the workflow | Code chat | To do |
 | N | One reviewed run | COURSES 2ND opens the pages; Israel makes the choices, or says yes to the Code chat making them | To do |
 | O | Check the run against the log, Salesforce and the inbox | Code chat | To do |
 
-Parts 0 to I can run while the Code chat builds the desk. Sign in to the developer org first (Enpass: "Salesforce Dev gtm-pipeline"). That is Israel's.
+Parts 0 to I can run while the Code chat builds the desk.
+
+**Change of method, 24/11/2026 (13:38), on COURSES 2ND's word:** clicking parts B to E in classic Setup was too slow and fragile, so the Code chat did them through the Salesforce CLI, signed in as the admin (part J moved up). Parts B to D are metadata in [`salesforce/quote-desk/`](../../salesforce/quote-desk/), written from `quote-desk-setup.json` by `scripts/build_quote_desk_metadata.py` and deployed with `sf project deploy start` (11 components, after a dry run); part E is `scripts/make_desk_user.py`. The CLI makes every call itself, so the admin's token never reaches the scripts. The click steps below stay as the record of what the metadata does. Sign in to the developer org first (Enpass: "Salesforce Dev gtm-pipeline"). That is Israel's.
 
 ## 0. Read the org first (COURSES 2ND; change nothing)
 

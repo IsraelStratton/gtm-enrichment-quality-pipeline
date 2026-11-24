@@ -86,20 +86,83 @@
     }
   ],
   "standard_fields_read": {
-    "Quote": ["Name", "QuoteNumber", "Status", "ExpirationDate", "BillingCountry", "Subtotal", "TotalPrice", "OpportunityId", "AccountId"],
-    "QuoteLineItem": ["LineNumber", "Product2Id", "Quantity", "ListPrice", "UnitPrice", "Discount", "TotalPrice"],
-    "Opportunity": ["Name", "Amount", "CloseDate"],
-    "Account": ["Name"],
-    "Product2": ["Name", "ProductCode"]
+    "Quote": [
+      "Name",
+      "QuoteNumber",
+      "Status",
+      "ExpirationDate",
+      "BillingCountry",
+      "Subtotal",
+      "TotalPrice",
+      "OpportunityId",
+      "AccountId"
+    ],
+    "QuoteLineItem": [
+      "LineNumber",
+      "Product2Id",
+      "Quantity",
+      "ListPrice",
+      "UnitPrice",
+      "Discount",
+      "TotalPrice"
+    ],
+    "Opportunity": [
+      "Name",
+      "Amount",
+      "CloseDate"
+    ],
+    "Account": [
+      "Name"
+    ],
+    "Product2": [
+      "Name",
+      "ProductCode"
+    ]
   },
-  "standard_fields_edited": {"Quote": ["Status"]},
-  "fields_never_read": {"Quote": ["ContactId", "Email", "Phone", "Fax"]},
+  "standard_fields_edited": {
+    "Quote": [
+      "Status"
+    ]
+  },
+  "fields_never_read": {
+    "Quote": [
+      "ContactId",
+      "Email",
+      "Phone",
+      "Fax"
+    ]
+  },
   "products": [
-    {"code": "DQC-SEAT", "name": "Data Quality Cloud, one seat for a year", "list_price": 600, "kind": "subscription"},
-    {"code": "LRA-SEAT", "name": "Lead Routing add-on, one seat for a year", "list_price": 240, "kind": "subscription"},
-    {"code": "SUP-PREM", "name": "Premium support, one year", "list_price": 9000, "kind": "subscription"},
-    {"code": "IMPL-STD", "name": "Implementation package", "list_price": 15000, "kind": "services"},
-    {"code": "TRAIN-DAY", "name": "Training day", "list_price": 2500, "kind": "services"}
+    {
+      "code": "DQC-SEAT",
+      "name": "Data Quality Cloud, one seat for a year",
+      "list_price": 600,
+      "kind": "subscription"
+    },
+    {
+      "code": "LRA-SEAT",
+      "name": "Lead Routing add-on, one seat for a year",
+      "list_price": 240,
+      "kind": "subscription"
+    },
+    {
+      "code": "SUP-PREM",
+      "name": "Premium support, one year",
+      "list_price": 9000,
+      "kind": "subscription"
+    },
+    {
+      "code": "IMPL-STD",
+      "name": "Implementation package",
+      "list_price": 15000,
+      "kind": "services"
+    },
+    {
+      "code": "TRAIN-DAY",
+      "name": "Training day",
+      "list_price": 2500,
+      "kind": "services"
+    }
   ],
   "opportunity_name_prefix": "GTM v2 quote desk:",
   "permission_set": {
@@ -107,24 +170,102 @@
     "api_name": "GTM_v2_Quote_Desk",
     "license": "--None--",
     "object_permissions": {
-      "Quote": ["Read", "Edit"],
-      "Opportunity": ["Read"],
-      "Account": ["Read"],
-      "Product2": ["Read"]
+      "Quote": [
+        "Read",
+        "Edit"
+      ],
+      "Opportunity": [
+        "Read"
+      ],
+      "Account": [
+        "Read"
+      ],
+      "Product2": [
+        "Read"
+      ]
     },
-    "object_permissions_never": ["Create", "Delete", "View All", "Modify All"],
-    "field_permissions_edit": ["Status", "GTM_Desk_Reason__c", "GTM_Desk_Stamp__c"],
+    "object_permissions_never": [
+      "Create",
+      "Delete",
+      "View All",
+      "Modify All"
+    ],
+    "field_permissions_edit": [
+      "Status",
+      "GTM_Desk_Reason__c",
+      "GTM_Desk_Stamp__c"
+    ],
     "field_permissions_read": [
-      "GTM_Case_Id__c", "GTM_Payment_Terms_Days__c", "GTM_Term_Months__c", "GTM_Special_Terms__c", "GTM_Rep_Note__c",
-      "Expiration Date", "Bill To (Billing Address)", "Subtotal", "Total Price", "Opportunity", "Account Name",
-      "Opportunity: Amount", "Opportunity: Close Date", "Quote Line Item: every field"
-    ]
+      "GTM_Case_Id__c",
+      "GTM_Payment_Terms_Days__c",
+      "GTM_Term_Months__c",
+      "GTM_Special_Terms__c",
+      "GTM_Rep_Note__c",
+      "Expiration Date",
+      "Bill To (Billing Address)",
+      "Subtotal",
+      "Total Price",
+      "Opportunity",
+      "Account Name",
+      "Opportunity: Amount",
+      "Opportunity: Close Date",
+      "Quote Line Item: every field"
+    ],
+    "field_permissions_api": {
+      "about": "What the permission set holds, as Salesforce names it. Fields with no entry here (Quote Name, QuoteNumber, OpportunityId; the line's Quantity, UnitPrice, LineNumber, Product2Id; Opportunity Name and CloseDate; Account Name; Product Name) are always readable and have no field-level security. Quote ContactId, Email, Phone and Fax are left out on purpose.",
+      "Quote": {
+        "edit": [
+          "Status",
+          "GTM_Desk_Reason__c",
+          "GTM_Desk_Stamp__c"
+        ],
+        "read": [
+          "GTM_Case_Id__c",
+          "GTM_Payment_Terms_Days__c",
+          "GTM_Term_Months__c",
+          "GTM_Special_Terms__c",
+          "GTM_Rep_Note__c",
+          "ExpirationDate",
+          "BillingAddress",
+          "AccountId",
+          "Subtotal",
+          "TotalPrice",
+          "Discount"
+        ]
+      },
+      "QuoteLineItem": {
+        "read": [
+          "Discount",
+          "ListPrice",
+          "ProductCode",
+          "Subtotal",
+          "TotalPrice"
+        ]
+      },
+      "Opportunity": {
+        "read": [
+          "Amount"
+        ]
+      },
+      "Product2": {
+        "read": [
+          "ProductCode"
+        ]
+      }
+    }
   },
   "desk_profile": {
     "label": "GTM v2 API only",
     "cloned_from": "Minimum Access - Salesforce",
-    "system_permissions": ["API Enabled", "API Only User"],
-    "note": "A copy of Salesforce's minimum-access profile with API access added and screen sign-in taken away. The Salesforce Integration licence is already used by GTM Integration (a Developer Edition org has one), so the desk user takes one of the org's Salesforce licences."
+    "system_permissions": [
+      "API Enabled",
+      "API Only User"
+    ],
+    "note": "A copy of Salesforce's minimum-access profile with API access added and screen sign-in taken away. The Salesforce Integration licence is already used by GTM Integration (a Developer Edition org has one), so the desk user takes one of the org's Salesforce licences.",
+    "api_permissions": [
+      "ApiEnabled",
+      "ApiUserOnly"
+    ]
   },
   "desk_user": {
     "first_name": "GTM",
@@ -133,7 +274,9 @@
     "username_pattern": "^gtm-v2-quote-desk-[a-z0-9]{4}@example\\.com$",
     "user_license": "Salesforce",
     "profile": "GTM v2 API only",
-    "permission_sets": ["GTM v2 quote desk"],
+    "permission_sets": [
+      "GTM v2 quote desk"
+    ],
     "note": "API only: it cannot sign in to Salesforce's screens. It reads quotes and changes only their status and the two desk fields."
   },
   "sharing": {
@@ -149,11 +292,15 @@
   "external_client_app": {
     "name": "GTM v2 quote desk (n8n)",
     "distribution_state": "Local",
-    "oauth_scopes": ["Manage user data via APIs (api)"],
+    "oauth_scopes": [
+      "Manage user data via APIs (api)"
+    ],
     "flow": "Client Credentials",
     "run_as": "the quote desk user",
     "permitted_users": "Admin approved users are pre-authorized",
-    "permitted_permission_sets": ["GTM v2 quote desk"],
+    "permitted_permission_sets": [
+      "GTM v2 quote desk"
+    ],
     "callback_url": "http://localhost:5678/rest/oauth2-credential/callback",
     "callback_note": "Salesforce requires a callback URL. The client-credentials flow never uses it."
   },
@@ -165,6 +312,11 @@
     "scope": "",
     "authentication": "Body"
   },
-  "env_keys": ["SALESFORCE_DOMAIN", "SALESFORCE_DESK_CLIENT_ID", "SALESFORCE_DESK_CLIENT_SECRET"],
-  "admin_cli_alias": "gtm-v2-admin"
+  "env_keys": [
+    "SALESFORCE_DOMAIN",
+    "SALESFORCE_DESK_CLIENT_ID",
+    "SALESFORCE_DESK_CLIENT_SECRET"
+  ],
+  "admin_cli_alias": "gtm-v2-admin",
+  "metadata_project": "salesforce/quote-desk (made by scripts/build_quote_desk_metadata.py from this file; deployed with the admin CLI login)"
 }

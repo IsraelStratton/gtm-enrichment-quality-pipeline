@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>GTM_Payment_Terms_Days__c</fullName>
+    <description>Days the customer has to pay each invoice: 30 means net 30. Empty means not set.</description>
+    <externalId>false</externalId>
+    <label>GTM payment terms (days)</label>
+    <precision>3</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackHistory>false</trackHistory>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

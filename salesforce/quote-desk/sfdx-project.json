@@ -1,0 +1,10 @@
+{
+  "name": "gtm-v2-quote-desk",
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true
+    }
+  ],
+  "sourceApiVersion": "64.0"
+}
