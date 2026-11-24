@@ -70,6 +70,7 @@ Drawn by hand for these notes.
 | 4 | 3 | **15 of 15** | Told the fields hold only the final route and priority; for a changed row it now points to the run log for the AI's proposal |
 
   Transcripts: [version 1](init-164-evidence/prompts-20261123T235144Z.json), [version 2](init-164-evidence/prompts-20261123T235415Z.json), [version 3](init-164-evidence/prompts-20261124T000239Z.json), [version 4](init-164-evidence/prompts-20261124T000740Z.json).
+- **Seen in Agentforce Studio (COURSES 2ND, part F, 11:15):** a Service Agent, Active, version 4, with Agent Router, Explain a routing decision (Actions 1), Off Topic and Ambiguous Question. [Screenshot of the canvas](init-164-evidence/agentforce-builder-canvas.jpg), with no org address on it. Still no Digital Wallet page and no charge. The admin CLI login was signed out after the build.
 - **Read back from the org** after version 4: a service agent running as its agent user; subagents `agent_router`, `explain_routing`, `off_topic`, `ambiguous_question`; one action; no escalation; no channel. [`published-agent.json`](init-164-evidence/published-agent.json).
 - **Tests: 264 pass** on every push.
 
