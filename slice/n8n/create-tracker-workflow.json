@@ -1,0 +1,58 @@
+{
+  "name": "GTM v2 slice: create tracker (run once)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0e7e9e38-eaac-55ec-a48d-7e71e253db6e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"properties\": {\n    \"title\": \"GTM v2 approved leads tracker\"\n  },\n  \"sheets\": [\n    {\n      \"properties\": {\n        \"title\": \"rows\",\n        \"gridProperties\": {\n          \"frozenRowCount\": 1\n        }\n      },\n      \"data\": [\n        {\n          \"startRow\": 0,\n          \"startColumn\": 0,\n          \"rowData\": [\n            {\n              \"values\": [\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"written_by\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"run_id\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"lead_id\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"company_name\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"domain\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"route\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"priority\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"owner_team\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"decision\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"approved_by\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"approved_at\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"sent_at\"\n                  }\n                },\n                {\n                  \"userEnteredValue\": {\n                    \"stringValue\": \"received_at\"\n                  }\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "112ba165-cb9a-505e-926f-e60342823367",
+      "name": "Create tracker sheet",
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": null,
+          "name": "Google least reach gtm-pipeline"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Create tracker sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

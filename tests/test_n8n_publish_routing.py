@@ -78,3 +78,31 @@ def test_a_new_form_trigger_gets_a_webhook_id_and_a_live_one_keeps_its_own():
     assert next(n for n in pub.request_body(wanted, live)["nodes"] if n["name"] == "Upload CSV")["webhookId"] == "kept-from-n8n"
     assert "webhookId" not in next(n for n in wanted["nodes"] if n["name"] == "Upload CSV"), "the file's workflow is left as it is"
     assert set(fresh) == {"name", "nodes", "connections", "settings"}
+
+
+TABLES = [{"id": "t1", "name": "Quarantine"}, {"id": "t2", "name": "Something else"}]
+
+
+def quarantine_ref(wf):
+    return next(n for n in wf["nodes"] if n["name"] == "Quarantine Table")["parameters"]["dataTableId"]["value"]
+
+
+@pytest.mark.parametrize("target", ["hubspot", "salesforce"])
+def test_the_quarantine_table_is_filled_in_by_name_and_the_file_holds_no_id(target):
+    wf = build.build(target)
+    assert quarantine_ref(wf) == "QUARANTINE_DATA_TABLE_ID" and build.DATA_TABLES == {"QUARANTINE_DATA_TABLE_ID": "Quarantine"}
+    assert quarantine_ref(pub.with_data_table_ids(wf, TABLES)) == "t1"
+    assert quarantine_ref(wf) == "QUARANTINE_DATA_TABLE_ID", "the file's workflow is left as it is"
+
+
+def test_a_missing_or_doubled_data_table_stops_the_import_and_is_named():
+    with pytest.raises(LookupError, match="data table named 'Quarantine' \\(used by Quarantine Table\\), found 0"):
+        pub.with_data_table_ids(build.build("hubspot"), TABLES[1:])
+    with pytest.raises(LookupError, match="found 2"):
+        pub.with_data_table_ids(build.build("hubspot"), TABLES + [{"id": "t3", "name": "Quarantine"}])
+
+
+def test_the_quote_desk_has_no_data_table_and_passes_through_unchanged():
+    import build_n8n_quote_desk as desk_build
+    wf = desk_build.build()
+    assert pub.with_data_table_ids(wf, []) == wf

@@ -1,6 +1,6 @@
 # Build the slice in Zapier
 
-Zapier is shown four ways (KB-137, section 9, "Showing Zapier"). This guide covers way 1, the Free version. Ways 2 to 4 are listed at the end and get their own steps when reached.
+Zapier is shown four ways (KB-137, section 9, "Showing Zapier"). This guide covers way 1, the Free version. Ways 2 to 4 are listed at the end and get their own steps when reached. Every build here, as built, is also kept as clean data in [`zap-builds.json`](zap-builds.json): each step, setting and mapping, with IDs, addresses and keys as placeholders.
 
 Who does what (Israel's ruling, 23/11/2026, 12:39): COURSES 2ND clicks in Zapier. The Code chat writes the steps and checks the emails. Israel does sign-ins and the yes before the Pro trial.
 
@@ -15,7 +15,7 @@ Zapier Form "Approve a lead" -> Zap 1 -> Zapier Table "GTM v2 tracker (Zapier)" 
 - **The entry point is a person approving.** The approver fills in a Zapier Form. That stands in for the shared webhook, which Free cannot have.
 - **No outside login.** The Form, the Table and Email by Zapier are all inside Zapier, so this version reaches nothing in Google.
 - **Cost.** Each lead uses 1 task: Zapier did not charge for the Table step. Free allows 100 tasks a month, and Email by Zapier sends at most 5 emails a day.
-- **State, 23/11/2026, 15:15.** Built by COURSES 2ND and tested: 3 leads, 3 runs of each Zap, 3 records, 3 emails, 3 tasks. Both Zaps are now off. The form is public on zapier.app (see the [control sheet](../../docs/v2/control-sheet.md)).
+- **State, 23/11/2026, 15:15.** Built by COURSES 2ND and tested: 3 leads, 3 runs of each Zap, 3 records, 3 emails, 3 tasks. Both Zaps are now off. The form is public on zapier.app (see the [connections and reach](../../docs/v2/connections-and-reach.md)).
 
 ### 1. The Table: `GTM v2 tracker (Zapier)`
 

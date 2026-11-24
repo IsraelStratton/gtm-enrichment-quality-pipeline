@@ -12,6 +12,9 @@ For every line the outgoing commits add:
 For the commit being pushed (HEAD):
   - every live playbook meets its eval bar (scripts/playbook_bar.py, KB-137 A3.4): a playbook
     change that has not been tested, or that took the eval below its bar, cannot be pushed
+  - the rules page and every workflow that runs the data rules agree, both ways (scripts/rules_sync.py, A4.1)
+  - every workflow export is clean: no credential, key, address, host, username or ID (scripts/clean_exports.py)
+  - the README's generated parts and docs/v2/workflows.md match a fresh run of scripts/build_docs.py (A4.2)
 
 Findings name the file or commit, never the value.
 
@@ -122,14 +125,22 @@ def main(argv: list[str] | None = None) -> int:
         findings += check_identity(sha[:7], author, committer)
         findings += check_message(sha[:7], git("log", "-1", "--format=%B", sha))
     findings += scan_added(added_lines_by_file(git("diff", rng.replace("..", "...", 1) if "..." not in rng else rng)), private_values())
+    import build_docs
+    import clean_exports
+    import rules_sync
     from playbook_bar import check_all, git_reader
 
-    findings += [f"playbook bar: {x}" for x in check_all(git_reader("HEAD", REPO))]
+    head = git_reader("HEAD", REPO)
+    findings += [f"playbook bar: {x}" for x in check_all(head)]
+    findings += [f"rules page: {x}" for x in rules_sync.check_all(head)]
+    findings += [f"exports: {x}" for x in clean_exports.check_all(head)]
+    findings += [f"generated docs: {x}" for x in build_docs.check_all(head)]
     print(f"Checked {len(shas)} commit(s) in {rng}.")
     for f in findings:
         print(f"FAIL {f}")
     if not findings:
-        print("PASS no-reply author and committer, no agent lines, no private values in added lines, every playbook meets its bar")
+        print("PASS no-reply author and committer, no agent lines, no private values in added lines, every playbook meets "
+              "its bar, the rules page and the workflows agree, the exports are clean, the generated docs are up to date")
     return 1 if findings else 0
 
 

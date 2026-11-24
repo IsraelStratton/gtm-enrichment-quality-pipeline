@@ -14,7 +14,7 @@ KB-135 gives chapter 3 no list of its own, so it is drawn from its section 0b ro
 | 4 | Zapier way 3: Zapier MCP, Claude runs one Zapier action | Done 24/11/2026 | One Create Record call; record 8 marked `claude-mcp`; Zap 2's email 10 seconds later; one entry in the server's history |
 | 5 | Zapier way 4: admin settings on paper | Done 23/11/2026 | [zapier-admin-on-paper.md](zapier-admin-on-paper.md) |
 | 6 | Notes: comparison, limits met, cost per lead, when to use which, how each one works | Done 24/11/2026 | This page |
-| 7 | Every connection on the control sheet with its reach | Done 24/11/2026 | [control-sheet.md](control-sheet.md): the Zapier MCP row |
+| 7 | Every connection on the control sheet with its reach | Done 24/11/2026 | [connections-and-reach.md](connections-and-reach.md): the Zapier MCP row |
 | 8 | Left switched off | Done 24/11/2026, 12:17 | All three Zaps off; the MCP client disconnected and removed from Claude Code |
 
 **Moved to the wrap (Israel's ruling, 24/11/2026, 12:14; KB-135 v3.13):** the Zapier Pro clip. No clip or video is recorded until the larger initiatives are finished. The trial ends 07/12/2026, and the approval step exists only on Pro, so after that date the Zapier approval can be shown from its run history, not pressed live.
@@ -71,7 +71,7 @@ KB-135 gives chapter 3 no list of its own, so it is drawn from its section 0b ro
 | Zapier Free | A trigger and one action per Zap; 100 tasks a month | Two Zaps joined through a Zapier Table | Zapier Free plan help page |
 | Zapier Free | Email by Zapier sends 5 emails a day; while testing it delivers only to the account's own address | Fine for the slice; not for volume | Zapier help, "Send emails in Zap workflows" |
 | Make Free | 1,000 credits a month; 2 active scenarios; 1 data store | The slice is one scenario | Make pricing page, read 23/11/2026 |
-| n8n | The built-in Gmail and Sheets logins ask for far more than the slice needs | General Google login with three narrow permissions, and HTTP Request nodes | n8n 2.10.3 source; [control sheet](control-sheet.md) |
+| n8n | The built-in Gmail and Sheets logins ask for far more than the slice needs | General Google login with three narrow permissions, and HTTP Request nodes | n8n 2.10.3 source; [connections and reach](connections-and-reach.md) |
 | Google | An app in "Testing" gets logins that expire after 7 days. Publishing needs a home page and a privacy policy link | Links point at the public repo and [PRIVACY.md](../../PRIVACY.md). Day-8 test below | Google OAuth 2.0 docs; Google Cloud, 23/11/2026 |
 | Zapier MCP | A new server starts in agentic mode, and sign-in switches on actions for every app already connected to the account | Switched to managed mode and cut to one action before the first call | Zapier MCP docs ("how tools work", "switch modes"), read 24/11/2026; seen on the server |
 | Zapier MCP | Managed mode is a setting, not a lock: anyone signed in to the Zapier account can switch it back or add actions | Client disconnected after the one call; recorded on the control sheet | Zapier MCP docs, "switch modes" |

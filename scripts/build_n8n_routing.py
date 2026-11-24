@@ -71,10 +71,13 @@ CREDENTIALS = {
     "claude": {"httpHeaderAuth": {"id": None, "name": "Claude key gtm-pipeline-v2"}},
     "hubspot": {"httpHeaderAuth": {"id": None, "name": "HubSpot Service Key"}},
     # n8n's general OAuth2 login with the client-credentials grant, not n8n's Salesforce login,
-    # which asks for the "full" scope (fixed in n8n's code). See docs/v2/control-sheet.md.
+    # which asks for the "full" scope (fixed in n8n's code). See docs/v2/connections-and-reach.md.
     "salesforce": {"oAuth2Api": {"id": None, "name": "Salesforce gtm-pipeline (client credentials)"}},
     "postgres": {"postgres": {"id": None, "name": "GTM v2 run log (Postgres)"}},
 }
+# n8n data tables, like credentials, are named in the file and found in n8n by name when published
+# (scripts/n8n_publish_routing.py), so the file holds no instance ID. Version 1's quarantine table.
+DATA_TABLES = {"QUARANTINE_DATA_TABLE_ID": "Quarantine"}
 EXPORT_MARKER = "// ---------------------------------------------------------------- exports (not pasted into n8n)"
 NS = uuid.UUID("8a5c2f1e-6d3b-4e0a-9c7f-2b1d4e6f8a90")  # fixed, so the build is the same every time
 

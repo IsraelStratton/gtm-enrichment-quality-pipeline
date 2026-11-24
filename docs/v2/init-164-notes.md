@@ -27,7 +27,7 @@ Drawn by hand for these notes.
 | 1 | The five prompts give the expected results: two answered, two declined, one planted instruction blocked | Done 24/11/2026: version 4, three rounds, **15 of 15**, every answer graded on its words, on whether the read action ran (from the plan trace) and on the Account being unchanged. [Transcript](init-164-evidence/prompts-20261124T000740Z.json) |
 | 2 | The action list has no write, delete or send | Done: the published version holds one action, `explain_routing_decision` (the Apex class), plus four transitions and the company capture. [Read back from the org](init-164-evidence/published-agent.json). The Apex source has no DML, callout, email or event, checked on every push |
 | 3 | The role card and the control sheet line exist | Done: [`role-cards/routing-explainer.md`](role-cards/routing-explainer.md); [`control-sheet.md`](control-sheet.md) |
-| 4 | The README section and the clip are done | README section drafted below, for the wrap (front-facing wording goes through the job search's door, KB-138 section 10). The clip waits on Israel or COURSES 2ND |
+| 4 | The README section and the clip are done | README section: done at the wrap, 24/11/2026 ([README](../../README.md#the-crms-own-agent-explains-a-decision-agentforce)); front-facing wording still goes through the job search's door, KB-138 section 10. The clip waits on Israel or COURSES 2ND |
 
 | Requirement | How it is met |
 |---|---|

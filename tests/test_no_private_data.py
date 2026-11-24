@@ -69,3 +69,18 @@ def test_guard_patterns_catch_what_they_should():
     assert ALLOWED_EMAIL_DOMAINS.search("sales" + at + "northwind-freight.example")
     assert GOOGLE_CLIENT_ID.search("1234567890" + "12-" + "abcdefghijklmnopqrstuvwxyz012345" + ".apps.googleusercontent.com")
     assert GOOGLE_CLIENT_SECRET.search("GOCSPX" + "-AbCdEfGhIjKlMnOp")
+
+
+def test_no_value_from_the_private_list_appears_in_tracked_files():
+    """The git-ignored .prepush-private.local lists tool IDs and usernames. Skipped in CI, which has no such file.
+    Added at the wrap: a sample value typed into a test was caught only by the pre-push check."""
+    path = REPO / ".prepush-private.local"
+    if not path.exists():
+        pytest.skip("no local .prepush-private.local")
+    values = {}
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        value = line.split("#", 1)[0].strip()
+        if len(value) >= 6:
+            values[f"line {i}"] = value
+    found = [f"{rel}: private list {label}" for rel, text in tracked_text_files() for label, v in values.items() if v in text]
+    assert not found, "\n".join(found)

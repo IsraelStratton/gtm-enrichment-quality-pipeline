@@ -44,4 +44,4 @@ From the Admin Essentials course, in our words:
 
 - Both Zaps are switched off outside tests and demos.
 - The Free version reaches nothing outside Zapier, so there is no outside login to govern.
-- The approver's form is public on zapier.app. That is an open point on the [control sheet](control-sheet.md).
+- The approver's form is public on zapier.app. That is an open point on the [connections and reach](connections-and-reach.md).

@@ -2,7 +2,7 @@
 
 Who does what (Israel's ruling, 23/11/2026, 12:39): COURSES 2ND clicks in Google Cloud and Make. Israel pastes the secrets and keys. The Code chat writes the steps, fires the test leads and checks the runs, rows and emails.
 
-The Make slice reaches Google with the same three permissions as n8n (send mail, only this app's files, the account's own address). It uses Make's HTTP module with its own Google login, not Make's Google Sheets and Gmail modules. Make's Google Sheets module needs full Drive access (Israel's choice, 23/11/2026; [control sheet](../../docs/v2/control-sheet.md)).
+The Make slice reaches Google with the same three permissions as n8n (send mail, only this app's files, the account's own address). It uses Make's HTTP module with its own Google login, not Make's Google Sheets and Gmail modules. Make's Google Sheets module needs full Drive access (Israel's choice, 23/11/2026; [connections and reach](../../docs/v2/connections-and-reach.md)).
 
 | Part | What | Who |
 |---|---|---|

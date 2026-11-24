@@ -45,4 +45,4 @@ The payload never names a recipient. Each tool decides where the owner email goe
 | Zapier, way 2 | Pro trial | Webhook, with a Filter on the key | The Zapier Table (so Zapier needs no Google login) | In the same Zap, after Zapier's AI and approval steps |
 | Zapier, way 3 | Zapier MCP | Claude, through one Zapier action (Tables: Create Record) | The Zapier Table, marked `claude-mcp` | Zap 2, when it is on |
 
-Build steps: [n8n](n8n/BUILD.md), [Make](make/BUILD.md), [Zapier](zapier/BUILD.md) (ways 1 to 3; way 4 is [on paper](../docs/v2/zapier-admin-on-paper.md)). Notes on time, limits and cost: [docs/v2/chapter-3-notes.md](../docs/v2/chapter-3-notes.md). What each connection can reach: [docs/v2/control-sheet.md](../docs/v2/control-sheet.md).
+Build steps: [n8n](n8n/BUILD.md), [Make](make/BUILD.md), [Zapier](zapier/BUILD.md) (ways 1 to 3; way 4 is [on paper](../docs/v2/zapier-admin-on-paper.md)). Notes on time, limits and cost: [docs/v2/chapter-3-notes.md](../docs/v2/chapter-3-notes.md). What each connection can reach: [docs/v2/connections-and-reach.md](../docs/v2/connections-and-reach.md).

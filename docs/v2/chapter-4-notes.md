@@ -29,7 +29,7 @@ Drawn by hand for these notes. One run writes to one CRM: the workflow you start
 | 2 | The org is set up from one file and checked against it, signed in as the workflow is, including what the login cannot do | Done 24/11/2026: [`salesforce/setup.json`](../../salesforce/setup.json), [`scripts/salesforce_setup_check.py`](../../scripts/salesforce_setup_check.py), 19 of 19 |
 | 3 | A sample file runs end to end on Salesforce: rules, AI step, approval, Salesforce, log | Done 24/11/2026: run `n8n-8791`, 9 Accounts written, 3 rejected, 0 failed |
 | 4 | Every Salesforce write carries the stamp (A1.1), one query from a stamp finds its record (A1.2), a changed row keeps both values (A1.3), rejected rows are never written | Done 24/11/2026: `check_run.py --latest --salesforce` 8 of 8; a stamp read from an Account found its record in one query |
-| 5 | The login has least reach, and that is recorded on the control sheet | Done 24/11/2026: proved by the setup check, signed in as the workflow; [`control-sheet.md`](control-sheet.md) |
+| 5 | The login has least reach, and that is recorded on the control sheet | Done 24/11/2026: proved by the setup check, signed in as the workflow; [`connections-and-reach.md`](connections-and-reach.md) |
 | 6 | Tests on every push; these notes with the walk-through | Done |
 
 ## What was built
@@ -44,7 +44,7 @@ Drawn by hand for these notes. One run writes to one CRM: the workflow you start
 | Import and drift check through the n8n API: credentials matched by name, the live copy compared with the file | [`scripts/n8n_publish_routing.py`](../../scripts/n8n_publish_routing.py) |
 | The run log refuses an unknown CRM target, and each run shows which CRM it wrote to | [`db/run_log.sql`](../../db/run_log.sql): `decisions_crm_target_check`, `run_summary.crm_targets` |
 | Setup steps, by who does them | [`chapter-4-build.md`](chapter-4-build.md) |
-| Control sheet and role card | [`control-sheet.md`](control-sheet.md), [`role-cards/routing-agent.md`](role-cards/routing-agent.md) |
+| Control sheet and role card | [`connections-and-reach.md`](connections-and-reach.md), [`role-cards/routing-agent.md`](role-cards/routing-agent.md) |
 
 ## Proved
 

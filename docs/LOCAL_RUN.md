@@ -30,7 +30,7 @@ Optional offline check (no credentials, no network calls):
 pytest -q
 ```
 
-Expected: `30 passed`.
+Expected: every test passes, with no keys and no network.
 
 ## 4. Configure `.env`
 

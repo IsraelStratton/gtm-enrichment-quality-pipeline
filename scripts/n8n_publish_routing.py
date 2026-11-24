@@ -11,7 +11,8 @@ What it does, so nothing is clicked by hand and nothing drifts:
      the quote desk (the Salesforce ones with the org's host from .env, SALESFORCE_DOMAIN), exactly
      as the committed file plus that host;
   2. finds each credential the file names in n8n, by name and type, and fills in its ID. It
-     never reads or sends a secret: n8n keeps those;
+     never reads or sends a secret: n8n keeps those. Data tables the same way, by name
+     (build_n8n_routing.DATA_TABLES), so the committed file holds no data table ID;
   3. creates the workflow, or updates the one with the same name, then publishes it. n8n
      registers no webhook for a trigger without a webhook ID, and the file ships the form trigger
      without one (n8n's editor import would copy a new ID over the Form Path). So the script
@@ -80,6 +81,24 @@ def with_credential_ids(wf: dict, credentials: list[dict]) -> dict:
             cred["id"] = cid
     if missing:
         raise LookupError("these n8n credentials do not exist yet: " + "; ".join(missing))
+    return out
+
+
+def with_data_table_ids(wf: dict, tables: list[dict]) -> dict:
+    """Fill each data table placeholder (build.DATA_TABLES) with the ID of the n8n data table of that name."""
+    by_name = {}
+    for t in tables:
+        by_name.setdefault(t["name"], []).append(t["id"])
+    out = copy.deepcopy(wf)
+    for node in out["nodes"]:
+        ref = (node.get("parameters") or {}).get("dataTableId")
+        if not isinstance(ref, dict) or ref.get("value") not in build.DATA_TABLES:
+            continue
+        name = build.DATA_TABLES[ref["value"]]
+        found = by_name.get(name, [])
+        if len(found) != 1:
+            raise LookupError(f"expected one n8n data table named '{name}' (used by {node['name']}), found {len(found)}")
+        ref["value"] = found[0]
     return out
 
 
@@ -166,6 +185,7 @@ def main(argv: list[str] | None = None) -> int:
     t = TARGETS[args.target]
     try:
         wanted = with_credential_ids(wanted_workflow(args.target), n8n.all("/credentials"))
+        wanted = with_data_table_ids(wanted, n8n.all("/data-tables"))
         found = [w for w in n8n.all("/workflows") if w["name"] == t["name"]]
         if len(found) > 1:
             print(f"CANNOT RUN {len(found)} workflows in n8n are named '{t['name']}'; keep one")

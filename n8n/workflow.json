@@ -79,7 +79,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "id",
-          "value": "7i01Eaf5nI0kmyHC"
+          "value": "QUARANTINE_DATA_TABLE_ID"
         },
         "resource": "row",
         "operation": "insert"

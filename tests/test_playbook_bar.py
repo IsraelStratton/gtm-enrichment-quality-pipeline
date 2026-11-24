@@ -40,4 +40,5 @@ def test_a_quote_desk_workflow_on_a_design_the_eval_did_not_keep_fails_the_gate(
 
 def test_the_pre_push_check_runs_the_playbook_bar():
     source = (REPO / "scripts" / "prepush_check.py").read_text(encoding="utf-8")
-    assert 'check_all(git_reader("HEAD", REPO))' in source and prepush_check.__doc__.count("playbook_bar.py") == 1
+    assert 'head = git_reader("HEAD", REPO)' in source and 'check_all(head)' in source
+    assert prepush_check.__doc__.count("playbook_bar.py") == 1
