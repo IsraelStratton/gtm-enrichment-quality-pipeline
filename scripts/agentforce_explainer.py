@@ -7,12 +7,14 @@
       Script holds a placeholder, so no org-specific value is in the repository. Every sf command
       for the explainer runs from the local copy.
 
-  python scripts/agentforce_explainer.py prompts --target-org gtm-v2-admin
+  python scripts/agentforce_explainer.py prompts --target-org gtm-v2-admin [--rounds 3]
       Runs the five prompts in salesforce/agentforce/test-prompts.json against the activated,
       published agent, each in its own live preview session. A live preview of a service agent
       runs its actions as the agent user, so the answers come through the agent user's least
       access. Before and after each prompt, the Account is read through the chapter 4 integration
-      login, to show that nothing changed. Each answer is graded with the prompt's checks. The
+      login, to show that nothing changed. The session's plan trace shows which actions ran: an
+      answer counts only if the read action ran (no made-up answer passes), and a refusal only if
+      no action ran. Each answer is graded with the prompt's checks. The
       transcript and grades are written to docs/v2/init-164-evidence/.
 
 The admin CLI login (sf org login web) is Israel's, and he logs it out when the build is done.
@@ -89,9 +91,29 @@ def texts(value) -> list[str]:
     return found
 
 
-def grade(prompt: dict, answer: str, before: dict | None, after: dict | None) -> list[tuple[bool, str]]:
+def actions_run(session_id: str, root: Path | None = None) -> list[dict]:
+    """The actions the agent ran in one preview session, read from the plan traces the CLI saves
+    (one FunctionStep per action call): name, input, and whether it succeeded."""
+    runs = []
+    for trace in sorted((root or LOCAL).glob(f".sfdx/agents/*/sessions/{session_id}/traces/*.json")):
+        for step in json.loads(trace.read_text(encoding="utf-8")).get("plan", []):
+            if step.get("type") == "FunctionStep":
+                fn = step.get("function") or step.get("data") or {}
+                output = fn.get("output") or {}
+                runs.append({"name": fn.get("name"), "input": fn.get("input"),
+                             "status": output.get("__action_execution_status__") if isinstance(output, dict) else None})
+    return runs
+
+
+def grade(prompt: dict, answer: str, before: dict | None, after: dict | None, runs: list[dict] | None = None) -> list[tuple[bool, str]]:
     low = answer.lower()
     checks = []
+    if runs is not None:
+        read = [r for r in runs if r["name"] == "explain_routing_decision" and r["status"] == "success"]
+        if prompt["kind"] == "declined":
+            checks.append((not read, "no action ran"))
+        else:
+            checks.append((len(read) >= 1, "the read action ran, so the answer is grounded"))
     for word in prompt.get("must_include", []):
         checks.append((word.lower() in low, f"says {word!r}"))
     if prompt.get("must_include_any"):
@@ -107,13 +129,13 @@ def read_account(client: SalesforceClient, key: str) -> dict | None:
     return {k: record.get(k) for k in READ_BACK} if record else None
 
 
-def run_prompts(org: str) -> int:
+def run_prompts(org: str, rounds: int = 1) -> int:
     if not LOCAL.exists():
         prepare()
     prompts = json.loads(PROMPTS.read_text(encoding="utf-8"))["prompts"]
     client = SalesforceClient.from_env()
     results, all_ok = [], True
-    for p in prompts:
+    for round_no, p in [(r, p) for r in range(1, rounds + 1) for p in prompts]:
         before = read_account(client, p["account_key"])
         session = sf(["agent", "preview", "start", "-o", org, "--api-name", AGENT])
         session_id = session.get("sessionId") or session.get("id")
@@ -126,20 +148,21 @@ def run_prompts(org: str) -> int:
                 pass
         after = read_account(client, p["account_key"])
         answer = "\n".join(texts(reply))
-        checks = grade(p, answer, before, after)
+        runs = actions_run(session_id)
+        checks = grade(p, answer, before, after, runs)
         ok = all(c for c, _ in checks)
         all_ok &= ok
-        results.append({"id": p["id"], "kind": p["kind"], "requirement": p["requirement"], "utterance": p["utterance"],
-                        "answer": HOST_RE.sub("<org host>", answer), "as_expected": ok,
+        results.append({"round": round_no, "id": p["id"], "kind": p["kind"], "requirement": p["requirement"], "utterance": p["utterance"],
+                        "answer": HOST_RE.sub("<org host>", answer), "actions_run": runs, "as_expected": ok,
                         "checks": [{"ok": c, "check": t} for c, t in checks], "account_before": before, "account_after": after})
-        print(f"{'PASS' if ok else 'FAIL'} {p['id']} {p['kind']} ({p['requirement']}): {p['utterance']}")
+        print(f"{'PASS' if ok else 'FAIL'} round {round_no} {p['id']} {p['kind']} ({p['requirement']}): {p['utterance']}")
         for c, t in checks:
             if not c:
                 print(f"     not met: {t}")
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = EVIDENCE / f"prompts-{stamp}.json"
-    out.write_text(json.dumps({"agent": AGENT, "run_at_utc": stamp, "mode": "live preview of the activated agent, actions run as the agent user",
+    out.write_text(json.dumps({"agent": AGENT, "run_at_utc": stamp, "rounds": rounds, "mode": "live preview of the activated agent, actions run as the agent user",
                                "all_as_expected": all_ok, "results": results}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{sum(r['as_expected'] for r in results)} of {len(results)} as expected. Transcript: {out.relative_to(REPO)}")
     return 0 if all_ok else 1
@@ -151,12 +174,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("prepare", help="make the local deployable copy with the agent user filled in")
     pr = sub.add_parser("prompts", help="run the five test prompts against the activated agent")
     pr.add_argument("--target-org", required=True, help="the sf alias of Israel's admin login")
+    pr.add_argument("--rounds", type=int, default=1, help="run the five prompts this many times (default 1)")
     args = ap.parse_args(argv)
     try:
         if args.command == "prepare":
             print(f"Local project ready: {prepare().relative_to(REPO)}")
             return 0
-        return run_prompts(args.target_org)
+        return run_prompts(args.target_org, args.rounds)
     except (RuntimeError, SalesforceError) as e:
         print(f"CANNOT RUN {HOST_RE.sub('<org host>', str(e))}")
         return 2

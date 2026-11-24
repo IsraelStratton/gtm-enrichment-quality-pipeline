@@ -1,0 +1,56 @@
+{
+  "_about": "INIT-164: what is published and active in the developer org, read back with the admin CLI login on 24/11/2026 after version 4 was activated. The agent user's username is left out; it is in .env.",
+  "agent": "GTM_Routing_Explainer",
+  "active_version": 4,
+  "agent_type": "EinsteinServiceAgent",
+  "runs_as_agent_user": true,
+  "can_escalate": "false",
+  "knowledge_action_enabled": "false",
+  "subagents": [
+    "agent_router",
+    "ambiguous_question",
+    "explain_routing",
+    "off_topic"
+  ],
+  "actions_in_graph": [
+    "capture_company -> __state_update_action__",
+    "go_to_ambiguous_question -> __state_update_action__",
+    "go_to_explain_routing -> __state_update_action__",
+    "go_to_off_topic -> __state_update_action__"
+  ],
+  "local_actions": [
+    "explain_routing/explain_routing_decision"
+  ],
+  "channels": "none connected",
+  "agent_user": {
+    "name": "GTM Explainer",
+    "active": true,
+    "profile": "Einstein Agent User",
+    "licence": "Einstein Agent"
+  },
+  "agent_user_permission_sets": [
+    "The Einstein Agent User profile's own permission set",
+    "Agentforce Service Agent Object Access",
+    "Agentforce Service Agent User",
+    "GTM v2 routing explainer (read)",
+    "Prompt Template User"
+  ],
+  "agent_user_object_rights": [
+    "Account: Read (from GTM_v2_Routing_Explainer)",
+    "GenAiPromptTemplate: Read (from EinsteinGPTPromptTemplateUser)"
+  ],
+  "account_fields_from_our_permission_set": [
+    "Account.Clay_Domain_Key__c",
+    "Account.GTM_Decision_Stamp__c",
+    "Account.GTM_Priority__c",
+    "Account.GTM_Route__c",
+    "Account.GTM_Routing_Confidence__c",
+    "Account.GTM_Routing_Reason__c",
+    "Account.GTM_Routing_Status__c"
+  ],
+  "account_fields_from_the_einstein_agent_user_profile": {
+    "read": 35,
+    "edit_set_but_unusable_without_account_edit": 28,
+    "includes_description": true
+  }
+}

@@ -10,13 +10,13 @@ Who does what follows Israel's ruling of 23/11/2026: the Code chat does the comm
 
 | Part | What | Who | State |
 |---|---|---|---|
-| A | Read the org's Agentforce settings and limits | COURSES 2ND | To do |
-| B | Make the planted-instruction test record | COURSES 2ND | To do |
-| C | Sign the Salesforce CLI in as the admin | Israel | To do |
-| D | Deploy, create the agent user, publish, activate, run the five prompts | Code chat | To do |
+| A | Read the org's Agentforce settings and limits | COURSES 2ND | Done 24/11/2026 10:43: no price, trial, card or contract; 201 Einstein Agent licences |
+| B | Make the planted-instruction test record | COURSES 2ND | Done 24/11/2026 |
+| C | Sign the Salesforce CLI in as the admin | Israel | Done 24/11/2026 |
+| D | Deploy, create the agent user, publish, activate, run the five prompts | Code chat | Done 24/11/2026: version 4 active; 15 of 15 over three rounds |
 | E | Sign the CLI out | Israel | To do |
 | F | Read the usage again; one look at the agent in Agentforce Studio | COURSES 2ND | To do |
-| G | README section and a short clip | Code chat writes; Israel or COURSES 2ND records | To do |
+| G | README section and a short clip | Code chat writes; Israel or COURSES 2ND records | Section drafted in [`init-164-notes.md`](init-164-notes.md) for the wrap; clip to do |
 
 ## What the agent is
 
@@ -33,7 +33,7 @@ Who does what follows Israel's ruling of 23/11/2026: the Code chat does the comm
 
 Signed in to the developer org as Israel. Read each item and report it; change only item 1, and only if it is off.
 
-1. Setup, quick find **Agentforce Agents**. The **Agentforce** toggle: On or Off. If Off, switch it On and refresh the page. If switching it on shows a price, a trial, or a request for a card or contract, stop.
+1. Setup, quick find **Agentforce Agents**. The **Agentforce** toggle: On or Off (24/11/2026: this org's page has no toggle; it offers New Agent). If Off, switch it On and refresh the page. If switching it on shows a price, a trial, or a request for a card or contract, stop.
 2. Setup, quick find **Einstein Setup**. "Turn on Einstein": On or Off. Report only.
 3. Setup, quick find **Data Cloud Setup** (it may be named Data 360 Setup). Report what the page shows: provisioned, being provisioned, or a "Get Started" button. Do not press Get Started: it may ask for terms, which are Israel's to accept.
 4. Setup, quick find **Einstein Audit, Analytics, and Monitoring Setup**. Report whether **Agentforce Session Tracing** and **Audit and Feedback** are on. Report only.
