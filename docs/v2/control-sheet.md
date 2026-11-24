@@ -11,6 +11,7 @@ One page for the whole build (KB-137 A1.5 to A1.7), laid out on the six practice
 | Routing explainer in Salesforce | Its [Agent Script file](../../salesforce/agentforce/force-app/main/default/aiAuthoringBundles/GTM_Routing_Explainer/GTM_Routing_Explainer.agent) | [Agentforce service agent](role-cards/routing-explainer.md): one read-only action | None needed: it changes and sends nothing, and has no channel | Salesforce admin (made-up role) | [test-prompts.json](../../salesforce/agentforce/test-prompts.json): 15 of 15 ([evidence](init-164-evidence/)) |
 | Owner note, Zapier Pro slice | The prompt in [zap-builds.json](../../slice/zapier/zap-builds.json) | AI by Zapier | Human in the Loop: decline stops the Zap | Sales operations (made-up role) | None: a demonstration ([chapter 3 notes](chapter-3-notes.md)) |
 | Zapier MCP record (way 3) | None | Claude Code with one Zapier action | The lead was approved before the call ([zap-builds.json](../../slice/zapier/zap-builds.json)) | The build's owner | None: one call, then disconnected ([chapter 3 notes](chapter-3-notes.md)) |
+| Questions about the run log | None: four fixed queries | [Ask the pipeline](role-cards/ask-the-pipeline.md): MCP tools that read the run log and change nothing | None needed | RevOps lead (made-up role) | [8 of 8 questions](init-165-notes.md) |
 
 Workflows with no AI step are not on the register. Their logins are with every other in [connections-and-reach.md](connections-and-reach.md).
 
@@ -30,6 +31,7 @@ Workflows with no AI step are not on the register. Their logins are with every o
 | Routing, HubSpot and Salesforce | Review page: approve, change or reject each row, flagged rows first, no default | `tests/test_n8n_routing_workflow.py::test_no_path_reaches_the_crm_without_the_review_page`; `gtm_v2.decision_record` | Close the page or reject every row; deactivate the workflow; revoke the key in the `gtm-pipeline` workspace ([role card](role-cards/routing-agent.md)) |
 | Quote desk | Review page: approve or reject with a reason; a fix-first quote offers only Reject | `tests/test_quote_desk_workflow.py::test_salesforce_changes_only_after_the_review_page`; `gtm_v2.desk_record` | Close the page; deactivate the workflow or the desk's Salesforce user ([role cards](role-cards/quote-desk-agents.md)) |
 | Routing explainer | None needed: it reads only | `tests/test_agentforce_explainer.py::test_the_action_has_no_write_delete_or_send` | Deactivate the agent in Agentforce Studio ([role card](role-cards/routing-explainer.md)) |
+| Ask the pipeline | None needed: it reads only | `tests/test_ask_pipeline.py::test_a_write_with_the_tools_login_fails_even_in_a_read_write_transaction` | `scripts/ask_pipeline.py` off; it is off unless started ([role card](role-cards/ask-the-pipeline.md)) |
 | Zapier Pro slice | Human in the Loop approves the AI's note | Decline tested 24/11/2026: no row, no email ([chapter 3 notes](chapter-3-notes.md)) | Switch the Zap off; all three are off ([zap-builds.json](../../slice/zapier/zap-builds.json)) |
 
 ## The 10/12/2026 disclosure questions

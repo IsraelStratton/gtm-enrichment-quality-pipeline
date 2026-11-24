@@ -34,14 +34,17 @@ SHEET_JSON = REPO / "docs" / "v2" / "cost-sheet.json"
 SHEET_MD = REPO / "docs" / "v2" / "cost-sheet.md"
 LIVE_MODEL = "claude-haiku-5-5"
 
+# Runs whose ID starts with test- are rows added on purpose to test a tool (INIT-165's planted
+# instruction): no AI call was made, so they are not decisions and the sheet leaves them out.
 QUERIES = {
     "routing_by_model": """
         select model, source, count(*) as decisions, sum(input_tokens) as input_tokens, sum(output_tokens) as output_tokens,
                sum(cost_usd) as total_cost_usd
-        from gtm_v2.decision_record group by model, source order by model, source""",
+        from gtm_v2.decision_record where run_id not like 'test-%' group by model, source order by model, source""",
     "routing_by_route": """
         select model, coalesce(proposed_route, '(no proposal)') as route, count(*) as decisions, sum(cost_usd) as total_cost_usd
-        from gtm_v2.decision_record group by model, coalesce(proposed_route, '(no proposal)') order by model, route""",
+        from gtm_v2.decision_record where run_id not like 'test-%'
+        group by model, coalesce(proposed_route, '(no proposal)') order by model, route""",
     "routing_live_writes": """
         select model, count(*) as proposals, count(*) filter (where crm_write_status = 'written') as written,
                count(*) filter (where action = 'rejected') as rejected, sum(cost_usd) as total_cost_usd,

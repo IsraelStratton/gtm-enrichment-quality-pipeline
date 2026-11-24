@@ -52,6 +52,7 @@ TITLES = {
     "slice/n8n/create-tracker-workflow.json": ("Make the tracker sheet (run once; each run makes another sheet)", "Chapter 3"),
     "slice/make/slice-scenario.blueprint.json": ("The slice in Make", "Chapter 3"),
     "slice/zapier/zap-builds.json": ("The slice in Zapier: ways 1 to 3", "Chapter 3"),
+    "n8n/workflow-v2-ask-pipeline.json": ("Ask the pipeline: a read-only MCP server over the run log", "INIT-165"),
 }
 SYSTEMS = {
     "api.anthropic.com": "Claude API",
@@ -68,13 +69,19 @@ VERB = {"GET": "reads", "POST": "writes", "PATCH": "writes", "PUT": "writes", "D
 
 
 def n8n_edges(wf: dict) -> list[tuple[str, str, int, int]]:
-    """(from, to, output index, number of outputs) for every connection."""
+    """(from, to, output index, number of outputs) for every connection.
+
+    A tool is wired into the node that uses it (an ai_tool connection runs from the tool to, say, an MCP
+    Server Trigger), but a run goes the other way: the trigger calls the tool. So those are turned round."""
     out = []
     for src, kinds in wf["connections"].items():
-        for branches in kinds.values():
+        for kind_name, branches in kinds.items():
             for i, branch in enumerate(branches):
                 for link in branch:
-                    out.append((src, link["node"], i, len(branches)))
+                    if kind_name.startswith("ai_"):
+                        out.append((link["node"], src, 0, 1))
+                    else:
+                        out.append((src, link["node"], i, len(branches)))
     return out
 
 
@@ -154,13 +161,13 @@ def short_type(node: dict) -> str:
 def kind(node: dict) -> str:
     t = short_type(node)
     p = node.get("parameters") or {}
-    if t in ("formTrigger", "webhook", "manualTrigger"):
+    if t in ("formTrigger", "webhook", "manualTrigger", "mcpTrigger"):
         return "start"
     if t == "form":
         return "person" if p.get("operation") == "page" else "page"
     if t == "if":
         return "branch"
-    if t in ("postgres", "dataTable"):
+    if t in ("postgres", "postgresTool", "dataTable"):
         return "store"
     if t == "httpRequest":
         return "ai" if urlsplit(p.get("url", "")).hostname == "api.anthropic.com" else "call"
@@ -234,6 +241,11 @@ def describe(node: dict) -> str:
         return f"Starts when a lead is sent to `{p.get('httpMethod', 'GET')} /webhook/{p.get('path', '')}`{guard}"
     if t == "manualTrigger":
         return "Started by hand in the n8n editor"
+    if t == "mcpTrigger":
+        guard = (f", and only with the bearer token in the n8n credential \"{credential_names(node)[0]}\""
+                 if p.get("authentication") == "bearerAuth" and credential_names(node) else "")
+        return (f"An MCP server at `/mcp/{p.get('path', '')}`{guard}. It offers the tools wired to it; nothing runs "
+                "until a client calls one, and it listens only while the workflow is published")
     if t == "form":
         if p.get("operation") == "page":
             src = re.search(r"\$\('([^']+)'\)", str(p.get("jsonOutput", "")))
@@ -269,6 +281,12 @@ def describe(node: dict) -> str:
     if t == "postgres":
         fns = sorted(set(re.findall(r"gtm_v2\.\w+", p.get("query", ""))))
         return f"Run log: `{'`, `'.join(fns)}`, with the add-only login \"{(credential_names(node) or [''])[0]}\""
+    if t == "postgresTool":
+        fns = sorted(set(re.findall(r"gtm_v2\.\w+", p.get("query", ""))))
+        names = re.findall(r"\$fromAI\('(\w+)'", (p.get("options") or {}).get("queryReplacement", ""))
+        said = ", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else "".join(names)
+        return (f"A read-only tool. One fixed query, `{'`, `'.join(fns)}`, with the client's {said} "
+                f"as one JSON value; signed in as \"{(credential_names(node) or [''])[0]}\"")
     if t == "dataTable":
         ref = p.get("dataTableId") or {}
         return f"Adds the row to the n8n data table `{ref.get('value', '')}` (found by name when published)"
@@ -407,17 +425,22 @@ def reach_row(rel: str, data: dict) -> dict:
     extra = []
     if any(short_type(n) == "postgres" for n in by):
         extra.append("run log (add only)")
+    if any(short_type(n) == "postgresTool" for n in by):
+        extra.append("run log (read only)")
     if any(short_type(n) == "readWriteFile" for n in by):
         extra.append("playbook (read only)")
     if any(short_type(n) == "dataTable" for n in by):
         extra.append("n8n quarantine table")
     starts = [n for n in by if kind(n) == "start"]
-    start = {"formTrigger": "a form", "webhook": "a webhook with a key", "manualTrigger": "by hand"}.get(short_type(starts[0]), "?") if starts else "?"
+    start = {"formTrigger": "a form", "webhook": "a webhook with a key", "manualTrigger": "by hand",
+             "mcpTrigger": "an MCP client, with a token"}.get(short_type(starts[0]), "?") if starts else "?"
     persons = [n["name"] for n in by if kind(n) == "person"]
     if persons:
         person = " and ".join(persons)
     elif "create-tracker" in rel:
         person = "nobody needed: run once, by hand"
+    elif any(short_type(n) == "mcpTrigger" for n in by):
+        person = "nobody needed: it only reads; it writes, starts and sends nothing"
     elif rel.startswith("slice/"):
         person = "before it: the lead arrives approved"
     else:

@@ -14,6 +14,7 @@ Every file here is a clean export: no credential, key, address, host, username o
 | [Chapter 2: Lead routing with a person's approval, writing to HubSpot](../../n8n/workflow-v2.json) | n8n | 24 | a form | Claude API (asks), HubSpot (writes), run log (add only), playbook (read only), n8n quarantine table | Review Page |
 | [Chapter 4: The same routing, writing to Salesforce](../../n8n/workflow-v2-salesforce.json) | n8n | 24 | a form | Claude API (asks), Salesforce (writes), run log (add only), playbook (read only), n8n quarantine table | Review Page |
 | [Chapter 5: Quote exceptions desk](../../n8n/workflow-v2-quote-desk.json) | n8n | 27 | a form | Claude API (asks), Salesforce (reads and writes), Gmail (sends), Google account (reads its own address), run log (add only), playbook (read only) | Review Page |
+| [INIT-165: Ask the pipeline: a read-only MCP server over the run log](../../n8n/workflow-v2-ask-pipeline.json) | n8n | 5 | an MCP client, with a token | run log (read only) | nobody needed: it only reads; it writes, starts and sends nothing |
 | [Chapter 3: The slice in n8n: an approved lead, a tracking row, an email to the owner](../../slice/n8n/slice-workflow.json) | n8n | 6 | a webhook with a key | Google Sheets (writes), Gmail (sends), Google account (reads its own address) | before it: the lead arrives approved |
 | [Chapter 3: Make the tracker sheet (run once; each run makes another sheet)](../../slice/n8n/create-tracker-workflow.json) | n8n | 2 | by hand | Google Sheets (writes) | nobody needed: run once, by hand |
 | [Chapter 3: The slice in Make](../../slice/make/slice-scenario.blueprint.json) | Make | 5 | a webhook | Google Sheets (writes), Gmail (sends), Google account (reads its own address) | before it: the lead arrives approved |
@@ -322,6 +323,31 @@ flowchart TD
 25. **Read Run Summary** (postgres). Run log: `gtm_v2.desk_run_summary`, with the add-only login "GTM v2 run log (Postgres)".
 26. **Done Message** (code). The cost comes back from the run log, which works it out from the price table.
 27. **Done** (form). The closing page: what happened, read back from the run.
+
+## INIT-165: Ask the pipeline: a read-only MCP server over the run log
+
+File: [`n8n/workflow-v2-ask-pipeline.json`](../../n8n/workflow-v2-ask-pipeline.json). Workflow name in n8n: "GTM v2 INIT-165: ask the pipeline (read-only MCP server)".
+
+```mermaid
+flowchart TD
+  s1(["1. Ask the Pipeline"])
+  s2[("2. cost_summary")]
+  s3[("3. explain_decision")]
+  s4[("4. list_decisions")]
+  s5[("5. run_summary")]
+  s1 --> s5
+  s1 --> s4
+  s1 --> s3
+  s1 --> s2
+  classDef person stroke-width:4px
+  classDef ai stroke-dasharray: 6 4
+```
+
+1. **Ask the Pipeline** (mcpTrigger). An MCP server at `/mcp/gtm-v2-ask-the-pipeline`, and only with the bearer token in the n8n credential "GTM v2 ask the pipeline token". It offers the tools wired to it; nothing runs until a client calls one, and it listens only while the workflow is published.
+2. **cost_summary** (postgresTool). A read-only tool. One fixed query, `gtm_v2.ask_costs`, with the client's from_date, to_date, group_by and kind as one JSON value; signed in as "GTM v2 run log reader (read only)".
+3. **explain_decision** (postgresTool). A read-only tool. One fixed query, `gtm_v2.ask_explain`, with the client's decision_id as one JSON value; signed in as "GTM v2 run log reader (read only)".
+4. **list_decisions** (postgresTool). A read-only tool. One fixed query, `gtm_v2.ask_decisions`, with the client's run_id, route, changed_only and company as one JSON value; signed in as "GTM v2 run log reader (read only)".
+5. **run_summary** (postgresTool). A read-only tool. One fixed query, `gtm_v2.ask_run_summary`, with the client's from_date, to_date and kind as one JSON value; signed in as "GTM v2 run log reader (read only)".
 
 ## Chapter 3: The slice in n8n: an approved lead, a tracking row, an email to the owner
 

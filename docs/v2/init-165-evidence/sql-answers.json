@@ -1,0 +1,98 @@
+{
+  "made_by": "python scripts/ask_pipeline.py answers",
+  "login": "gtm_v2_reader",
+  "answers": {
+    "Q1": {
+      "question": "On 23 and 24 November 2026, Sydney time, how many live runs and how many eval runs did the routing pipeline log, and how many proposals did the live runs make in all?",
+      "sql": "select count(*) filter (where run_id not like 'test-%' and source = 'n8n') as live_runs, count(*) filter (where run_id not like 'test-%' and source <> 'n8n') as eval_runs, coalesce(sum(proposals) filter (where run_id not like 'test-%' and source = 'n8n'), 0) as live_proposals from gtm_v2.run_summary where (started_at at time zone 'Australia/Sydney')::date between '2026-11-23' and '2026-11-24'",
+      "figures": {
+        "live_runs": 4,
+        "eval_runs": 13,
+        "live_proposals": 39
+      }
+    },
+    "Q2": {
+      "question": "In run n8n-8790, how many leads did a person approve, change and reject, and how many were written to the CRM?",
+      "sql": "select approved, changed, rejected, written as written_to_crm from gtm_v2.run_summary where run_id = 'n8n-8790'",
+      "figures": {
+        "approved": 8,
+        "changed": 1,
+        "rejected": 3,
+        "written_to_crm": 9
+      }
+    },
+    "Q3": {
+      "question": "What did run n8n-8791 cost in total, and what did it cost per decision, in US dollars?",
+      "sql": "select total_cost_usd, cost_per_decision_usd from gtm_v2.run_summary where run_id = 'n8n-8791'",
+      "figures": {
+        "total_cost_usd": 0.004688,
+        "cost_per_decision_usd": 0.00039069
+      }
+    },
+    "Q4": {
+      "question": "Across every run, which routing decisions did a person change? Give each decision ID.",
+      "sql": "select count(*) as changed_decisions, coalesce(array_agg(decision_id order by decision_id), '{}') as decision_ids from gtm_v2.decision_record where action = 'changed'",
+      "figures": {
+        "changed_decisions": 5,
+        "decision_ids": [
+          "D-n8n8790-04",
+          "D-n8n8791-04",
+          "D-n8n8791-10",
+          "D-n8n8792-04",
+          "D-n8n8792-10"
+        ]
+      }
+    },
+    "Q5": {
+      "question": "In run n8n-8792, how many leads ended up with each route? Count the leads a person rejected separately, as rejected.",
+      "sql": "select coalesce(case when action = 'rejected' then 'rejected' when action is not null then chosen_route else proposed_route end, 'no_proposal') as route, count(*) as leads from gtm_v2.decision_record where run_id = 'n8n-8792' group by 1 order by 1",
+      "figures": {
+        "customer_support": 1,
+        "enterprise_anz": 3,
+        "mid_market": 2,
+        "nurture": 1,
+        "partnerships": 1,
+        "rejected": 3,
+        "smb": 1
+      }
+    },
+    "Q6": {
+      "question": "Why was Marri Robotics routed as it was in run n8n-8790? Say which model and which playbook version made the proposal, how confident it was, and what the person did.",
+      "sql": "select proposed_route, proposed_priority, confidence, model, playbook_version, action, case when action = 'rejected' then null when action is not null then chosen_route else proposed_route end as final_route from gtm_v2.decision_record where run_id = 'n8n-8790' and company_name = 'Marri Robotics'",
+      "figures": {
+        "proposed_route": "smb",
+        "proposed_priority": "medium",
+        "confidence": 0.55,
+        "model": "claude-haiku-5-5",
+        "playbook_version": "1.0.0",
+        "action": "approved",
+        "final_route": "smb"
+      }
+    },
+    "Q7": {
+      "question": "On 24 November 2026, Sydney time, what did the eval decisions cost on each model: how many decisions, the total cost and the cost per decision, in US dollars?",
+      "sql": "select model, count(*) as decisions, round(sum(cost_usd), 6) as total_cost_usd, round(avg(cost_usd), 8) as cost_per_decision_usd from gtm_v2.decision_record where run_id not like 'test-%' and source <> 'n8n' and (proposed_at at time zone 'Australia/Sydney')::date = '2026-11-24' group by model order by model",
+      "figures": {
+        "claude-haiku-5-5": {
+          "decisions": 360,
+          "total_cost_usd": 0.142701,
+          "cost_per_decision_usd": 0.00039639
+        },
+        "claude-sonnet-5-5": {
+          "decisions": 120,
+          "total_cost_usd": 0.92761,
+          "cost_per_decision_usd": 0.00773008
+        }
+      }
+    },
+    "Q8": {
+      "question": "Across the live runs on 23 and 24 November 2026, which route did the AI propose most often, how many proposals was that, and what did those proposals cost in total?",
+      "sql": "select proposed_route as route, count(*) as proposals, round(sum(cost_usd), 6) as total_cost_usd from gtm_v2.decision_record where run_id not like 'test-%' and source = 'n8n' and (proposed_at at time zone 'Australia/Sydney')::date between '2026-11-23' and '2026-11-24' group by proposed_route order by count(*) desc, proposed_route",
+      "figures": {
+        "route": "enterprise_anz",
+        "proposals": 14,
+        "total_cost_usd": 0.005622
+      }
+    }
+  }
+}

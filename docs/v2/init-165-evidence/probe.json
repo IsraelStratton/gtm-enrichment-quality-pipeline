@@ -1,0 +1,107 @@
+[
+  {
+    "check": "the server offers exactly the four tools",
+    "passed": true,
+    "detail": "cost_summary, explain_decision, list_decisions, run_summary"
+  },
+  {
+    "check": "every tool says it is read only",
+    "passed": true,
+    "detail": "each description starts 'Read only.'"
+  },
+  {
+    "check": "no tool takes SQL or a query",
+    "passed": true,
+    "detail": "cost_summary: from_date, to_date, group_by, kind; explain_decision: decision_id; list_decisions: run_id, route, changed_only, company; run_summary: from_date, to_date, kind"
+  },
+  {
+    "check": "the inputs are typed",
+    "passed": true,
+    "detail": "changed_only is a boolean; dates are strings"
+  },
+  {
+    "check": "a good question is answered",
+    "passed": true,
+    "detail": "run_summary, live, 23 to 24 November: 4 runs"
+  },
+  {
+    "check": "refused: a date in the wrong form",
+    "passed": true,
+    "detail": "NodeOperationError: refused: from_date must be a date written YYYY-MM-DD  Details: Failed query: select gtm_v2.ask_run_summary($1::jsonb) as result NodeOperatio"
+  },
+  {
+    "check": "refused: a date that does not exist",
+    "passed": true,
+    "detail": "NodeOperationError: refused: from_date is not a real date: 2026-02-30  Details: Failed query: select gtm_v2.ask_run_summary($1::jsonb) as result NodeOperationEr"
+  },
+  {
+    "check": "refused: dates the wrong way round",
+    "passed": true,
+    "detail": "NodeOperationError: refused: to_date is before from_date  Details: Failed query: select gtm_v2.ask_costs($1::jsonb) as result NodeOperationError: refused: to_da"
+  },
+  {
+    "check": "refused: a route that does not exist",
+    "passed": true,
+    "detail": "NodeOperationError: refused: route must be one of customer_support, disqualify, enterprise_anz, enterprise_global, mid_market, nurture, partnerships, smb  Detai"
+  },
+  {
+    "check": "refused: a grouping that does not exist",
+    "passed": true,
+    "detail": "NodeOperationError: refused: group_by must be one of model, route, day, kind  Details: Failed query: select gtm_v2.ask_costs($1::jsonb) as result NodeOperationE"
+  },
+  {
+    "check": "refused: SQL in a decision ID",
+    "passed": true,
+    "detail": "NodeOperationError: refused: decision_id must be a decision ID such as D-n8n8790-04  Details: Failed query: select gtm_v2.ask_explain($1::jsonb) as result NodeO"
+  },
+  {
+    "check": "refused: SQL in a run ID",
+    "passed": true,
+    "detail": "NodeOperationError: refused: run_id must be a run ID such as n8n-8790  Details: Failed query: select gtm_v2.ask_decisions($1::jsonb) as result NodeOperationErro"
+  },
+  {
+    "check": "refused: text where true or false is wanted",
+    "passed": true,
+    "detail": "Error: Received tool input did not match expected schema  â Expected boolean, received string   â at changed_only Error: Received tool input did not match e"
+  },
+  {
+    "check": "refused: a missing required input",
+    "passed": true,
+    "detail": "Error: Received tool input did not match expected schema  â Required   â at decision_id Error: Received tool input did not match expected schema  â Requir"
+  },
+  {
+    "check": "an extra input named sql is dropped, never run",
+    "passed": true,
+    "detail": "dropped: the answer lists 12 decisions of n8n-8790"
+  },
+  {
+    "check": "a wide query is cut off at 50",
+    "passed": true,
+    "detail": "50 of 560 returned, truncated True"
+  },
+  {
+    "check": "text from an enquiry comes back marked untrusted",
+    "passed": true,
+    "detail": "the planted row's reason is under untrusted_text, with the notice"
+  },
+  {
+    "check": "no token is refused",
+    "passed": true,
+    "detail": "HTTP 403"
+  },
+  {
+    "check": "a wrong token is refused",
+    "passed": true,
+    "detail": "HTTP 403"
+  },
+  {
+    "check": "the network address is refused (another device cannot reach it)",
+    "passed": true,
+    "detail": "ConnectionError on this Mac's network address"
+  },
+  {
+    "check": "n8n is published on 127.0.0.1 only",
+    "passed": true,
+    "detail": "127.0.0.1:5678"
+  }
+]

@@ -53,6 +53,7 @@ EXPORTS = {
         "n8n/workflow-v2.json",
         "n8n/workflow-v2-salesforce.json",
         "n8n/workflow-v2-quote-desk.json",
+        "n8n/workflow-v2-ask-pipeline.json",
         "slice/n8n/slice-workflow.json",
         "slice/n8n/create-tracker-workflow.json",
     ],

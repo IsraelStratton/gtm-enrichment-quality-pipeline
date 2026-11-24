@@ -1,0 +1,49 @@
+{
+  "client": "This Claude Code session (Claude Opus 5.5), 25/11/2026, calling the MCP server through scripts/ask_pipeline.py call: the same endpoint, protocol and token as any MCP client. Every call and its full result is in session-calls.jsonl, in the order made. The answers below come from those results.",
+  "calls": "session-calls.jsonl",
+  "answers": {
+    "Q1": {
+      "tools": ["run_summary (from_date 2026-11-23, to_date 2026-11-24)"],
+      "answer": "17 runs started on 23 and 24 November: 4 live runs in n8n (n8n-8790, n8n-8791, n8n-8792 and n8n-8793) and 13 eval runs. The live runs made 12 + 12 + 12 + 3 = 39 proposals.",
+      "figures": {"live_runs": 4, "eval_runs": 13, "live_proposals": 39}
+    },
+    "Q2": {
+      "tools": ["run_summary (the same call)"],
+      "answer": "In n8n-8790 a person approved 8 leads, changed 1 and rejected 3; 9 were written to the CRM (HubSpot).",
+      "figures": {"approved": 8, "changed": 1, "rejected": 3, "written_to_crm": 9}
+    },
+    "Q3": {
+      "tools": ["run_summary (the same call)"],
+      "answer": "Run n8n-8791 cost US$0.004688 in all, or US$0.00039069 a decision.",
+      "figures": {"total_cost_usd": 0.004688, "cost_per_decision_usd": 0.00039069}
+    },
+    "Q4": {
+      "tools": ["list_decisions (changed_only true)"],
+      "answer": "Five decisions were changed by a person, all in live runs: D-n8n8790-04, D-n8n8791-04 and D-n8n8792-04 (mid_market, priority medium changed to high), and D-n8n8791-10 and D-n8n8792-10 (enterprise_anz changed to smb).",
+      "figures": {"changed_decisions": 5, "decision_ids": ["D-n8n8790-04", "D-n8n8791-04", "D-n8n8791-10", "D-n8n8792-04", "D-n8n8792-10"]}
+    },
+    "Q5": {
+      "tools": ["run_summary (the same call): the run's routes"],
+      "answer": "In n8n-8792: enterprise_anz 3, mid_market 2, customer_support 1, nurture 1, partnerships 1, smb 1; 3 leads were rejected and not routed.",
+      "figures": {"customer_support": 1, "enterprise_anz": 3, "mid_market": 2, "nurture": 1, "partnerships": 1, "smb": 1, "rejected": 3}
+    },
+    "Q6": {
+      "tools": ["list_decisions (run_id n8n-8790, company Marri Robotics)", "explain_decision (D-n8n8790-10)"],
+      "answer": "Claude Haiku 5.5, following lead-routing-playbook 1.0.0, proposed smb at medium priority with confidence 0.55. Its reason: the company asked for a demo for its sales team, but its staff number is missing, so the size band is a guess and confidence was capped. That flagged the row for review (low confidence, the model's own 'unclear' flag, size unknown). The person approved it as proposed, so it ended in smb.",
+      "figures": {"proposed_route": "smb", "proposed_priority": "medium", "confidence": 0.55, "model": "claude-haiku-5-5", "playbook_version": "1.0.0", "action": "approved", "final_route": "smb"}
+    },
+    "Q7": {
+      "tools": ["cost_summary (2026-11-24, group_by model, kind eval)"],
+      "answer": "On 24 November the eval decisions cost US$0.142701 on Haiku 5.5 (360 decisions, US$0.00039639 each) and US$0.92761 on Sonnet 5.5 (120 decisions, US$0.00773008 each).",
+      "figures": {
+        "claude-haiku-5-5": {"decisions": 360, "total_cost_usd": 0.142701, "cost_per_decision_usd": 0.00039639},
+        "claude-sonnet-5-5": {"decisions": 120, "total_cost_usd": 0.92761, "cost_per_decision_usd": 0.00773008}
+      }
+    },
+    "Q8": {
+      "tools": ["cost_summary (2026-11-23 to 2026-11-24, group_by route, kind live)"],
+      "answer": "enterprise_anz: the AI proposed it 14 times in the live runs, at US$0.005622 in all.",
+      "figures": {"route": "enterprise_anz", "proposals": 14, "total_cost_usd": 0.005622}
+    }
+  }
+}
