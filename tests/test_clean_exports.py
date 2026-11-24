@@ -5,6 +5,7 @@ Samples of private-looking values are built at run time, so this file passes its
 """
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -127,8 +128,8 @@ def test_the_zapier_cleaner_replaces_ids_hooks_addresses_and_private_values(tmp_
         "customer": "sales" + AT + "northwind-freight.example"}}}]}
     clean = ce.clean_zapier(raw, {".env SLICE_KEY_ZAPIER": "s3cret-key-value-123"})
     n = clean["zaps"][0]["nodes"]["1"]
-    assert clean["zaps"][0]["id"] == "ZAPIER_ID" and n["authentication_id"] == "ZAPIER_ID"
-    assert n["params"]["url"] == "ZAPIER_HOOK_URL" and n["to"] == "OWNER_INBOX" and n["key"] == "PRIVATE_VALUE_REMOVED"
+    assert clean["zaps"][0]["id"] == "ZAP_1" and n["authentication_id"] == "ZAPIER_ID"
+    assert n["params"]["url"] == "ZAPIER_HOOK_URL" and n["to"] == "OWNER_INBOX" and n["key"] == "SLICE_KEY_ZAPIER"
     assert n["customer"].endswith(".example") and n["selected_api"] == "WebHookCLIAPI@1.0.6"
     assert ce.write_clean("zapier", clean, tmp_path / "z.json", {}) == 0
 
@@ -166,3 +167,40 @@ def test_the_zapier_record_matches_the_guide_and_the_notes():
             for setting in s.get("settings", []):
                 if setting["setting"] == "to":
                     assert setting["value"] == "OWNER_INBOX"
+
+
+APPS = {"InterfacesCLIAPI": "Zapier Forms", "TableCLIAPI": "Zapier Tables", "ZapierMailCLIAPI": "Email by Zapier",
+        "WebHookCLIAPI": "Webhooks by Zapier", "FilterAPI": "Filter by Zapier", "CodeCLIAPI": "Code by Zapier",
+        "AICLIAPI": "AI by Zapier", "App226439CLIAPI": "Human in the Loop"}
+
+
+def test_the_zapier_record_matches_zapiers_own_export():
+    """The as-built record (zap-builds.json) against Zapier's export, cleaned (zapier-export.json): the same Zaps,
+    the same steps in the same order, each step's app and action, and the Pro Zap's code word for word."""
+    record, export = load("slice/zapier/zap-builds.json"), load("slice/zapier/zapier-export.json")
+    assert [z["title"] for z in export["zaps"]] == [z["name"] for z in record["zaps"]]
+    assert [z["id"] for z in export["zaps"]] == ["ZAP_1", "ZAP_2", "ZAP_3"]
+    for rz, ez in zip(record["zaps"], export["zaps"]):
+        assert ez["status"] == rz["state"] == "off"
+        nodes = list(ez["nodes"].values())
+        assert [APPS[n["selected_api"].split("@")[0]] for n in nodes] == [s["app"] for s in rz["steps"]]
+        assert [n["action"] for n in nodes] == [s["action"] for s in rz["steps"]]
+        assert [n["parent_id"] for n in nodes[1:]] == list(ez["nodes"])[:-1], "each step follows the one before"
+    pro = export["zaps"][2]["nodes"]
+    code = next(s for s in record["zaps"][2]["steps"] if s["app"] == "Code by Zapier")["settings"][1]["value"]
+    assert " ".join(pro["ZAP_3_STEP_3"]["params"]["code"].split()) == " ".join(code.split())
+    assert pro["ZAP_3_STEP_2"]["params"]["filter_criteria"][0]["value"] == "FILTER_VALUE"
+    assert "http_x_slice_key" in pro["ZAP_3_STEP_2"]["params"]["filter_criteria"][0]["key"]
+    hitl = pro["ZAP_3_STEP_5"]["params"]
+    assert (hitl["denied_action"], hitl["timeout"], hitl["timeoutUnit"], hitl["allow_edit"]) == ("stop", "7", "days", True)
+    prompt = next(s for s in record["zaps"][2]["steps"] if s["app"] == "AI by Zapier")["settings"]
+    wording = next(x["value"] for x in prompt if x["setting"] == "prompt")
+    built = re.sub(r"\{\{ZAP_3_STEP_3__(\w+)\}\}", r"{\1}", pro["ZAP_3_STEP_4"]["params"]["instructions"])
+    assert built.endswith(wording) and built != wording, "the prompt as built has the guide's words after a stray field"
+
+
+def test_zapiers_export_held_the_key_the_ids_and_the_address_and_the_clean_copy_holds_none():
+    export = (REPO / "slice/zapier/zapier-export.json").read_text(encoding="utf-8")
+    for placeholder in ("FILTER_VALUE", "OWNER_INBOX", "ZAP_3_STEP_1", "ZAPIER_ID"):
+        assert placeholder in export
+    assert ce.zapier_findings(json.loads(export)) == [] and ce.text_findings(export) == []

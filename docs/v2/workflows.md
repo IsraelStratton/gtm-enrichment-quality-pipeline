@@ -392,7 +392,7 @@ flowchart LR
 
 ## Chapter 3: The slice in Zapier: ways 1 to 3
 
-File: [`slice/zapier/zap-builds.json`](../../slice/zapier/zap-builds.json), the as-built record (Zapier's own export is cleaned by `scripts/clean_exports.py zapier` when it is in hand).
+File: [`slice/zapier/zap-builds.json`](../../slice/zapier/zap-builds.json), the as-built record, checked step by step against Zapier's own export, cleaned: [`slice/zapier/zapier-export.json`](../../slice/zapier/zapier-export.json). Each step's action is Zapier's own name for it.
 
 #### Way 1: GTM v2 slice 1 of 2: approved lead to tracker (Free, off)
 
@@ -403,8 +403,8 @@ flowchart LR
   s1 --> s2
 ```
 
-1. **Zapier Forms, Form Submission Created**. form: Approve a lead.
-2. **Zapier Tables, Create Record**. table: GTM v2 tracker (Zapier). Mapped by hand: Zapier's Copilot could not map these fields on 23/11/2026.
+1. **Zapier Forms, Form Submission Created**. form: Approve a lead. Zapier's action: `new_form_submission`.
+2. **Zapier Tables, Create Record**. table: GTM v2 tracker (Zapier). Zapier's action: `create_record`. Mapped by hand: Zapier's Copilot could not map these fields on 23/11/2026.
 
 #### Way 1: GTM v2 slice 2 of 2: tracker row to owner email (Free, off)
 
@@ -415,8 +415,8 @@ flowchart LR
   s1 --> s2
 ```
 
-1. **Zapier Tables, New Record**. table: GTM v2 tracker (Zapier).
-2. **Email by Zapier, Send Outbound Email**. to: OWNER_INBOX; subject: Approved lead for {owner_team}: {company_name} ({priority}). The body is in the file. Email by Zapier sends at most 5 emails a day. The Table has no industry, enquiry or reason, so this email is shorter than n8n's and Make's.
+1. **Zapier Tables, New Record**. table: GTM v2 tracker (Zapier). Zapier's action: `new_record`.
+2. **Email by Zapier, Send Outbound Email**. to: OWNER_INBOX; subject: Approved lead for {owner_team}: {company_name} ({priority}). The body is in the file. Zapier's action: `outbound`. Email by Zapier sends at most 5 emails a day. The Table has no industry, enquiry or reason, so this email is shorter than n8n's and Make's.
 
 #### Way 2: GTM v2 slice: approved lead (Zapier Pro) (Professional trial, off)
 
@@ -425,7 +425,7 @@ flowchart LR
   s1["1. Webhooks by Zapier: Catch Raw Hook"]
   s2["2. Filter by Zapier: Only continue if"]
   s3["3. Code by Zapier: Run JavaScript"]
-  s4["4. AI by Zapier: Analyze and return data"]
+  s4["4. AI by Zapier: Prompt with one text output"]
   s5["5. Human in the Loop: Request Approval"]
   s6["6. Zapier Tables: Create Record"]
   s7["7. Email by Zapier: Send Outbound Email"]
@@ -437,13 +437,13 @@ flowchart LR
   s6 --> s7
 ```
 
-1. **Webhooks by Zapier, Catch Raw Hook**. address: ZAPIER_HOOK_URL. Only the raw hook shows the request headers, and the key travels in a header.
-2. **Filter by Zapier, Only continue if**. condition: the X-Slice-Key header (text) exactly matches SLICE_KEY_ZAPIER. Zapier answers every call with HTTP 200, so a wrong key is stopped here, not at the door: the run ends Filtered, with no task used.
-3. **Code by Zapier, Run JavaScript**. input: rawBody = the trigger's Raw Body (Zapier refused the name raw_body). The code is in the file.
-4. **AI by Zapier, Analyze and return data**. output: one text field, owner_note. The prompt is in the file. The lead's made-up text goes to Zapier's AI provider.
-5. **Human in the Loop, Request Approval**. reviewer: the account owner, by email (the only choice on Pro); title: Approve the owner note for {company_name}; shows: the company, the route, the priority and owner_note, which the reviewer may edit; on decline: the Zap stops: no row, no email (tested 24/11/2026); time-out: 7 days.
-6. **Zapier Tables, Create Record**. table: GTM v2 tracker (Zapier); mapping: the 13 fields from step 3; written_by is zapier-pro. The row goes to the Zapier Table, so Zapier needs no Google login.
-7. **Email by Zapier, Send Outbound Email**. to: OWNER_INBOX; subject: Approved lead for {owner_team}: {company_name} ({priority}). The body is in the file.
+1. **Webhooks by Zapier, Catch Raw Hook**. address: ZAPIER_HOOK_URL. Zapier's action: `hook_raw`. Only the raw hook shows the request headers, and the key travels in a header.
+2. **Filter by Zapier, Only continue if**. condition: the X-Slice-Key header (text) exactly matches SLICE_KEY_ZAPIER. Zapier's action: `filter`. Zapier answers every call with HTTP 200, so a wrong key is stopped here, not at the door: the run ends Filtered, with no task used.
+3. **Code by Zapier, Run JavaScript**. input: rawBody = the trigger's Raw Body (Zapier refused the name raw_body). The code is in the file. Zapier's action: `01929fad-d3dd-62c2-52ed-7868d5fcc691`.
+4. **AI by Zapier, Prompt with one text output**. model: standard/auto: Zapier picks the model; output: one text field, owner_note. The prompt is in the file. Zapier's action: `get_completion`. The lead's made-up text goes to Zapier's AI provider. Found in Zapier's export at the wrap: the prompt as built begins with a stray company-name field, pasted in front of 'Write a two-line note'. The notes came out right in every run; left as built.
+5. **Human in the Loop, Request Approval**. buttons: Approve or Decline; reviewer: the account owner, by email (the only choice on Pro); message: Approve the owner note for {company_name}. Route: {route}. Priority: {priority}. You can edit the note before approving. Decline stops the run.; shows: the company, the route, the priority and owner_note, which the reviewer may edit; on decline: the Zap stops: no row, no email (tested 24/11/2026); time-out: 7 days; on time-out the run ends. Zapier's action: `request_approval`.
+6. **Zapier Tables, Create Record**. table: GTM v2 tracker (Zapier); mapping: the 13 fields from step 3; written_by is zapier-pro. Zapier's action: `create_record`. The row goes to the Zapier Table, so Zapier needs no Google login.
+7. **Email by Zapier, Send Outbound Email**. to: OWNER_INBOX; subject: Approved lead for {owner_team}: {company_name} ({priority}). The body is in the file. Zapier's action: `outbound`.
 
 #### Way 3: Zapier MCP
 

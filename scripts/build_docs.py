@@ -369,7 +369,8 @@ def zapier_section(z: dict) -> list[str]:
             long = [x["setting"] for x in s.get("settings", []) if "\n" in x["value"]]
             extra = (f" The {' and '.join(long)} {'is' if len(long) == 1 else 'are'} in the file." if long else "")
             note = f" {s['note']}." if s.get("note") else ""
-            out.append(f"{s['step']}. **{s['app']}, {s['event']}**. {settings}.{extra}{note}".replace("..", ".").replace(". .", "."))
+            action = f" Zapier's action: `{s['action']}`." if s.get("action") else ""
+            out.append(f"{s['step']}. **{s['app']}, {s['event']}**. {settings}.{extra}{action}{note}".replace("..", ".").replace(". .", "."))
         out.append("")
     mcp = z["mcp_server"]
     action = mcp["actions"][0]
@@ -447,7 +448,7 @@ def systems_from(calls: list[tuple[str, str]]) -> str:
 def reach_table(read: Reader, prefix: str = "") -> str:
     lines = ["| Workflow | Tool | Steps | Starts from | Reaches | Where a person decides |", "|---|---|---|---|---|---|"]
     for files in EXPORTS.values():
-        for rel in files:
+        for rel in [f for f in files if f in TITLES]:  # Zapier's own export is the record's evidence, not a build of its own
             row = reach_row(rel, json.loads(read(rel)))
             title, chapter = TITLES[rel]
             lines.append(f"| [{chapter}: {title}]({prefix}{rel}) | {row['tool']} | {row['steps']} | {row['start']} | {row['reaches']} | {row['person']} |")
@@ -481,8 +482,9 @@ def workflows_page(read: Reader) -> str:
     L += [f"{i}. **{name}**. {what}." for i, (name, what) in enumerate(steps, 1)] + [""]
     z = json.loads(read(EXPORTS["zapier"][0]))
     title, chapter = TITLES[EXPORTS["zapier"][0]]
-    L += [f"## {chapter}: {title}", "", f"File: [`{EXPORTS['zapier'][0]}`](../../{EXPORTS['zapier'][0]}), the as-built record "
-          "(Zapier's own export is cleaned by `scripts/clean_exports.py zapier` when it is in hand).", ""]
+    L += [f"## {chapter}: {title}", "", f"File: [`{EXPORTS['zapier'][0]}`](../../{EXPORTS['zapier'][0]}), the as-built record, "
+          f"checked step by step against Zapier's own export, cleaned: [`{EXPORTS['zapier'][1]}`](../../{EXPORTS['zapier'][1]}). "
+          "Each step's action is Zapier's own name for it.", ""]
     L += zapier_section(z)
     return "\n".join(L).rstrip() + "\n"
 

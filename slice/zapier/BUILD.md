@@ -1,6 +1,6 @@
 # Build the slice in Zapier
 
-Zapier is shown four ways (KB-137, section 9, "Showing Zapier"). This guide covers way 1, the Free version. Ways 2 to 4 are listed at the end and get their own steps when reached. Every build here, as built, is also kept as clean data in [`zap-builds.json`](zap-builds.json): each step, setting and mapping, with IDs, addresses and keys as placeholders.
+Zapier is shown four ways (KB-137, section 9, "Showing Zapier"). This guide covers way 1, the Free version. Ways 2 to 4 are listed at the end and get their own steps when reached. Every build here, as built, is also kept as clean data in [`zap-builds.json`](zap-builds.json): each step, setting and mapping, with IDs, addresses and keys as placeholders. Zapier's own export, cleaned the same way, is [`zapier-export.json`](zapier-export.json), and a test keeps the two in step.
 
 Who does what (Israel's ruling, 23/11/2026, 12:39): COURSES 2ND clicks in Zapier. The Code chat writes the steps and checks the emails. Israel does sign-ins and the yes before the Pro trial.
 

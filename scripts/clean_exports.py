@@ -23,7 +23,8 @@ scripts/render_n8n_slice.py, Make and Zapier by hand in their editors.
   python scripts/clean_exports.py --check                         # every committed export
   python scripts/clean_exports.py n8n RAW.json OUT.json           # an n8n download or API read
   python scripts/clean_exports.py n8n-live "WORKFLOW NAME" OUT.json  # read it from the local n8n API
-  python scripts/clean_exports.py zapier RAW.json OUT.json        # Zapier's "Download my Zap workflows" file
+  python scripts/clean_exports.py zapier RAW.json OUT.json        # Zapier's export (zapfile.json, from Settings,
+                                                                  # Security and data); read it from Downloads, never copy it here
 
 A cleaner replaces what it knows how to replace, then runs the same checks on its result and writes
 nothing if anything is left. The Make blueprint has its own cleaner, scripts/scrub_make_blueprint.py.
@@ -56,7 +57,7 @@ EXPORTS = {
         "slice/n8n/create-tracker-workflow.json",
     ],
     "make": ["slice/make/slice-scenario.blueprint.json"],
-    "zapier": ["slice/zapier/zap-builds.json"],
+    "zapier": ["slice/zapier/zap-builds.json", "slice/zapier/zapier-export.json"],
 }
 # JSON files under n8n/ and slice/ that are data, not exports.
 NOT_EXPORTS = {"slice/approved_leads.json"}
@@ -147,16 +148,30 @@ def make_findings(bp: dict) -> list[str]:
     return out
 
 
+ZAPIER_KEEP = {"model_id"}  # names, not IDs: which AI model a step uses
+LONG_RANDOM = re.compile(r"\b[0-9a-f]{32,}\b|\b[A-Za-z0-9_-]{40,}\b")
+# Zapier's own resource IDs (forms, pages, fields): 20 or more lowercase letters and digits, both present.
+ZAPIER_RESOURCE_ID = re.compile(r"\b(?=[a-z0-9]*\d)(?=[a-z0-9]*[a-z])[a-z0-9]{20,}\b")
+
+
 def zapier_findings(z: dict) -> list[str]:
     out = []
     for path, value in _walk(z):
         key = path.rsplit(".", 1)[-1].split("[")[0]
-        if re.search(r"(^|_)id$|Id$", key) and value is not None and not (isinstance(value, str) and PLACEHOLDER.match(value)):
+        if key not in ZAPIER_KEEP and re.search(r"(^|_)id$|Id$", key) and value is not None \
+                and not (isinstance(value, str) and PLACEHOLDER.match(value)):
             out.append(f"{path}: an ID where a placeholder belongs")
         if isinstance(value, int) and not isinstance(value, bool) and value >= 100000:
             out.append(f"{path}: a number of six digits or more")
-    if BIG_NUMBER.search(json.dumps(z)):
-        out.append("a number of six digits or more inside a text value")
+        if key == "value" and "filter_criteria" in path and not (isinstance(value, str) and PLACEHOLDER.match(value)):
+            out.append(f"{path}: a filter value, which may be a key")
+        if isinstance(value, str) and LONG_RANDOM.search(value):
+            out.append(f"{path}: a long random string, which may be a key")
+        if isinstance(value, str) and ZAPIER_RESOURCE_ID.search(value):
+            out.append(f"{path}: a Zapier resource ID")
+    text = json.dumps(z)
+    if BIG_NUMBER.search(text):
+        out.append("a number of six digits or more inside a text value or a key name")
     return out
 
 
@@ -214,28 +229,61 @@ def clean_n8n(raw: dict) -> dict:
     return wf
 
 
+def zapier_id_names(raw) -> dict[str, str]:
+    """Zapier's own export ('zaps', each with 'nodes' keyed by step ID): each Zap ID and step ID as a placeholder
+    that keeps who refers to whom, ZAP_1 and ZAP_1_STEP_1, in the order the export lists them."""
+    names = {}
+    for i, zap in enumerate(raw.get("zaps", []) if isinstance(raw, dict) else [], 1):
+        if zap.get("id") is not None:
+            names[str(zap["id"])] = f"ZAP_{i}"
+        for j, step in enumerate((zap.get("nodes") or {}), 1):
+            names[str(step)] = f"ZAP_{i}_STEP_{j}"
+    return {k: v for k, v in names.items() if len(k) >= 5}  # a short key ("1") is a position, not an ID
+
+
 def clean_zapier(raw, private: dict[str, str] | None = None):
-    """Zapier's export, with every ID, webhook address, email address and private value replaced."""
-    values = sorted((v for v in (private or {}).values() if v), key=len, reverse=True)
+    """Zapier's export, with every ID, webhook address, email address, filter value and private value replaced.
 
-    def scrub(node, key=""):
+    Zap and step IDs become ZAP_n and ZAP_n_STEP_m everywhere they appear: as keys, as values and inside field
+    mappings. A private value from .env becomes its variable's name; any other private value, PRIVATE_VALUE_REMOVED.
+    A filter's comparison value becomes FILTER_VALUE, whatever it holds, since it may be a key."""
+    names = zapier_id_names(raw)
+    id_in_text = re.compile(r"(?<!\d)(" + "|".join(sorted(map(re.escape, names), key=len, reverse=True)) + r")(?!\d)") if names else None
+    swaps = sorted(((v, label.split(" ", 1)[1] if label.startswith(".env ") else "PRIVATE_VALUE_REMOVED")
+                    for label, v in (private or {}).items() if v), key=lambda x: len(x[0]), reverse=True)
+
+    def text(node: str) -> str:
+        if id_in_text:
+            node = id_in_text.sub(lambda m: names[m.group(1)], node)
+        for v, placeholder in swaps:
+            node = node.replace(v, placeholder)
+        node = re.sub(r"https://hooks\.zapier\.com/hooks/catch/[\w/]+", "ZAPIER_HOOK_URL", node)
+        node = EMAIL.sub(lambda m: m.group(0) if ALLOWED_EMAIL.search(m.group(0)) else "OWNER_INBOX", node)
+        node = ZAPIER_RESOURCE_ID.sub("ZAPIER_ID", node)
+        return BIG_NUMBER.sub("ZAPIER_ID", node)
+
+    def scrub(node, key="", path=""):
         if isinstance(node, dict):
-            return {k: scrub(v, k) for k, v in node.items()}
+            return {(names.get(k) or text(k)): scrub(v, k, f"{path}.{k}") for k, v in node.items()}
         if isinstance(node, list):
-            return [scrub(v, key) for v in node]
-        if re.search(r"(^|_)id$|Id$", key) and node is not None and not isinstance(node, bool):
+            return [scrub(v, key, path) for v in node]
+        if isinstance(node, bool) or node is None:
+            return node
+        if key == "value" and "filter_criteria" in path:
+            return "FILTER_VALUE"
+        if str(node) in names:
+            return names[str(node)]
+        if key not in ZAPIER_KEEP and re.search(r"(^|_)id$|Id$", key):
             return "ZAPIER_ID"
-        if isinstance(node, int) and not isinstance(node, bool) and node >= 100000:
+        if isinstance(node, int) and node >= 100000:
             return "ZAPIER_ID"
-        if isinstance(node, str):
-            for v in values:
-                node = node.replace(v, "PRIVATE_VALUE_REMOVED")
-            node = re.sub(r"https://hooks\.zapier\.com/hooks/catch/[\w/]+", "ZAPIER_HOOK_URL", node)
-            node = EMAIL.sub(lambda m: m.group(0) if ALLOWED_EMAIL.search(m.group(0)) else "OWNER_INBOX", node)
-            node = BIG_NUMBER.sub("ZAPIER_ID", node)
-        return node
+        return text(node) if isinstance(node, str) else node
 
-    return scrub(raw)
+    out = scrub(raw)
+    for i, zap in enumerate(out.get("zaps", []) if isinstance(out, dict) else [], 1):
+        if "id" in zap:
+            zap["id"] = f"ZAP_{i}"  # Zapier gives a Zap its first step's ID
+    return out
 
 
 def write_clean(kind: str, data, out: Path, private: dict[str, str]) -> int:
