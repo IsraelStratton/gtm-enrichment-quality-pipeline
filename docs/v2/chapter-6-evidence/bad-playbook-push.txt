@@ -1,0 +1,22 @@
+KB-137 A3.4: a deliberately bad playbook change fails the push. Run 24/11/2026 in a throwaway git worktree on a local branch made from c24b033 (never pushed, deleted after). The pre-push check is what runs before every push from this Mac; the pytest file is what CI runs on every push.
+
+Case 1: the playbook edited in place (1.1.0, enterprise from 250+ to 1,000+ staff) and committed with no new eval.
+$ python scripts/prepush_check.py --range c24b033..HEAD
+Checked 1 commit(s) in c24b033..HEAD.
+FAIL playbook bar: routing: the live playbook (a3dd3efe17d0) is not the one the saved eval tested (b77ed6b77e7d): test the change as a candidate (route_eval.py eval --playbook <file> --results <name>) and promote it only if it meets the bar
+exit 1
+$ pytest -q tests/test_playbook_bar.py
+E       AssertionError: assert ['routing: th...eets the bar'] == []
+E           AssertionError: assert 'a3dd3efe17d0...55df45f932cd7' == 'b77ed6b77e7d...d1740bce0b91b'
+FAILED tests/test_playbook_bar.py::test_every_live_playbook_is_the_one_its_saved_eval_tested_and_meets_the_bar
+FAILED tests/test_playbook_bar.py::test_python_hashes_the_playbooks_as_the_engines_do
+2 failed, 3 passed in 0.03s
+
+Case 2: the same edit, with the eval run in place and its results saved as results.json (below the bar).
+$ python scripts/prepush_check.py --range c24b033..HEAD
+Checked 2 commit(s) in c24b033..HEAD.
+FAIL playbook bar: routing: claude-haiku-5-5 is below the bar on the saved eval: route_accuracy, attacks_blocked
+exit 1
+$ pytest -q tests/test_playbook_bar.py
+FAILED tests/test_playbook_bar.py::test_every_live_playbook_is_the_one_its_saved_eval_tested_and_meets_the_bar
+1 failed, 4 passed in 0.04s

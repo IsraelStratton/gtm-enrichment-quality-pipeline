@@ -1,0 +1,172 @@
+{
+  "made_at": "2026-11-24T04:37:26Z",
+  "read_from": "the run log (schema gtm_v2) through the pipeline login gtm_v2_pipeline",
+  "routing_by_model": [
+    {
+      "model": "claude-haiku-5-5",
+      "source": "n8n",
+      "decisions": 39,
+      "input_tokens": 131253,
+      "output_tokens": 4437,
+      "total_cost_usd": "0.01534380"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "source": "python",
+      "decisions": 280,
+      "input_tokens": 942360,
+      "output_tokens": 32122,
+      "total_cost_usd": "0.11029700"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "source": "python",
+      "decisions": 120,
+      "input_tokens": 403560,
+      "output_tokens": 12049,
+      "total_cost_usd": "0.92761000"
+    }
+  ],
+  "routing_by_route": [
+    {
+      "model": "claude-haiku-5-5",
+      "route": "customer_support",
+      "decisions": 17,
+      "total_cost_usd": "0.00663550"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "disqualify",
+      "decisions": 44,
+      "total_cost_usd": "0.01787710"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "enterprise_anz",
+      "decisions": 66,
+      "total_cost_usd": "0.02632810"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "enterprise_global",
+      "decisions": 22,
+      "total_cost_usd": "0.00865380"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "mid_market",
+      "decisions": 77,
+      "total_cost_usd": "0.03020720"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "nurture",
+      "decisions": 33,
+      "total_cost_usd": "0.01264610"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "partnerships",
+      "decisions": 24,
+      "total_cost_usd": "0.00931200"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "route": "smb",
+      "decisions": 36,
+      "total_cost_usd": "0.01398100"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "customer_support",
+      "decisions": 6,
+      "total_cost_usd": "0.04611400"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "disqualify",
+      "decisions": 15,
+      "total_cost_usd": "0.11527000"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "enterprise_anz",
+      "decisions": 30,
+      "total_cost_usd": "0.23536400"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "enterprise_global",
+      "decisions": 9,
+      "total_cost_usd": "0.06993200"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "mid_market",
+      "decisions": 21,
+      "total_cost_usd": "0.16262800"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "nurture",
+      "decisions": 15,
+      "total_cost_usd": "0.11505400"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "partnerships",
+      "decisions": 9,
+      "total_cost_usd": "0.06908600"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "route": "smb",
+      "decisions": 15,
+      "total_cost_usd": "0.11416200"
+    }
+  ],
+  "routing_live_writes": [
+    {
+      "model": "claude-haiku-5-5",
+      "proposals": 39,
+      "written": 30,
+      "rejected": 9,
+      "total_cost_usd": "0.01534380",
+      "crm_targets": "hubspot, salesforce"
+    }
+  ],
+  "desk_by_design": [
+    {
+      "design": "agent_team",
+      "model": "claude-haiku-5-5",
+      "source": "python",
+      "quotes": 180,
+      "calls": 894,
+      "total_cost_usd": "0.63106600"
+    },
+    {
+      "design": "fixed_chain",
+      "model": "claude-haiku-5-5",
+      "source": "python",
+      "quotes": 180,
+      "calls": 358,
+      "total_cost_usd": "0.25256620"
+    },
+    {
+      "design": "one_prompt",
+      "model": "claude-haiku-5-5",
+      "source": "n8n",
+      "quotes": 8,
+      "calls": 8,
+      "total_cost_usd": "0.00560030"
+    },
+    {
+      "design": "one_prompt",
+      "model": "claude-haiku-5-5",
+      "source": "python",
+      "quotes": 180,
+      "calls": 180,
+      "total_cost_usd": "0.13935650"
+    }
+  ]
+}
