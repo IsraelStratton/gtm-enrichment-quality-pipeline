@@ -1,6 +1,6 @@
 # Chapter 5 notes: the quote exceptions desk, with the agent team compared
 
-KB-135 section 0b, chapter 5: quotes that break a rule (discount, missing fields, figures that do not match) are triaged with a reason and sent to an approver. KB-137 section 6 adds pack B (the agent team, B1 to B8) and the role cards (A1.4). Built 24/11/2026; the Salesforce setup and the reviewed run wait on COURSES 2ND and Israel ([`chapter-5-build.md`](chapter-5-build.md)).
+KB-135 section 0b, chapter 5: quotes that break a rule (discount, missing fields, figures that do not match) are triaged with a reason and sent to an approver. KB-137 section 6 adds pack B (the agent team, B1 to B8) and the role cards (A1.4). Built, set up in the org, and run end to end on 24/11/2026: run `n8n-8794` ([`chapter-5-build.md`](chapter-5-build.md) for the setup).
 
 ## What chapter 5 adds
 
@@ -28,14 +28,14 @@ Drawn by hand for these notes. Every message goes to the build account's own inb
 | 1 | Three designs take the same input and run on the same cases (B1) | Done: one prompt, a fixed chain, a lead agent with a policy checker and a message drafter; 20 quotes, 3 rounds each, 180 triages |
 | 2 | The eval compares them on accuracy, cost and time; the simplest that passes is kept; a results table names the kept design and why (B2) | Done: [`skins/quote-desk/eval/results.md`](../../skins/quote-desk/eval/results.md), made by the script against a bar fixed before the first run. **Kept: one prompt.** The README line: Israel's ruling, 24/11/2026, keep the table in `results.md` and these notes until the wrap, when the README is rewritten for version 2 (it has no version 2 content yet, and front-facing changes wait for the end of the build, KB-137 section 2) |
 | 3 | Each hand-off between agents writes a record (from, to, asked, why, evidence, confidence, tokens, cost), joined to the run log by run id (B3) | Done: `gtm_v2.handoffs` and the view `gtm_v2.handoff_record`; 179 hand-offs logged from the eval (58 chain, 121 team); `scripts/check_desk_run.py --handoffs <run>` |
-| 4 | The approver gets a message with the exception, the rule broken, the evidence and the proposed action, and can approve or reject with a reason (B4) | Built and tested in the harness. **Waiting:** the reviewed run on the real org (part N) |
-| 5 | Approve updates the quote with a stamp; reject sends it back to the owner with the reason; both seen in a sample run (B5) | Built and tested in the harness, including a partial and a full Salesforce refusal. **Waiting:** part N |
+| 4 | The approver gets a message with the exception, the rule broken, the evidence and the proposed action, and can approve or reject with a reason (B4) | Done 24/11/2026, run `n8n-8794`: the approver email (to `+gtm-approver`) and the review page; 8 decisions, each with a reason |
+| 5 | Approve updates the quote with a stamp; reject sends it back to the owner with the reason; both seen in a sample run (B5) | Done 24/11/2026, run `n8n-8794`: 2 approved and 6 rejected quotes in Salesforce with status, reason and stamp; 8 owner emails (to `+gtm-owner`) with the decision, reason and a draft reply |
 | 6 | The customer reply is a draft only; no step can send to a customer; a test confirms it (B6) | Done: `tests/test_quote_desk_workflow.py`, five tests (node types, the six HTTP calls, the two mail steps, the recipient with a customer address in the note) |
-| 7 | The queue is ordered by the date at risk, then deal size (B7) | Done in code and tested (`test_the_queue_is_ordered_by_the_date_at_risk_then_deal_size`, with a tie broken by size). **Waiting:** seen on the real review page (part N) |
+| 7 | The queue is ordered by the date at risk, then deal size (B7) | Done: tested, and seen on the real review page in run `n8n-8794` (Q-0011, Q-0009, Q-0015, Q-0004, Q-0017, Q-0007, Q-0003, Q-0005; Q-0004 before Q-0017 on the same date as the larger deal) |
 | 8 | Chapter 5 has its own labelled cases, with hostile notes (B8) | Done: [`skins/quote-desk/cases.json`](../../skins/quote-desk/cases.json), 20 cases, 4 hostile |
 | 9 | A role card for each agent in chapter 5 (A1.4) | Done: [`role-cards/quote-desk-agents.md`](role-cards/quote-desk-agents.md), four agents |
-| 10 | The desk's Salesforce login has least reach, proved by signing in as it, and recorded on the control sheet | Recorded: [`control-sheet.md`](control-sheet.md). **Waiting:** `scripts/salesforce_quote_desk_check.py` on the real org (part K) |
-| 11 | Tests on every push; these notes with the walk-through | Done: 368 tests (264 before) |
+| 10 | The desk's Salesforce login has least reach, proved by signing in as it, and recorded on the control sheet | Done 24/11/2026: `salesforce_quote_desk_check.py` 27 of 27, including the Apex guard's refusal of a quote line change; [`control-sheet.md`](control-sheet.md) |
+| 11 | Tests on every push; these notes with the walk-through | Done: 377 tests (264 before), and 2 Apex tests in the org |
 
 ## The eval: three designs on the same 20 quotes
 
@@ -97,9 +97,18 @@ COURSES 2ND made the External Client App (part G) and the n8n credential (part I
 1. **The desk could not see quote lines.** The workflow's own query stopped with `INVALID_TYPE: Didn't understand relationship 'QuoteLineItems'`: Salesforce hides quote lines, price books and price book entries from a user with no Price Books access, and the desk needs each line's list price to work out the real discount. Fixed with Price Books Read in the permission set.
 2. **Then it could change them.** With price books readable, Salesforce let the desk create, edit and delete quote lines (quantity and unit price), because line changes follow quote edit rights, and the desk needs quote edit for the status. My first message to Israel had said the change gave no new edit right; the check caught it. Israel chose to block it rather than record it: the custom permission `GTM_Quote_Desk_No_Line_Changes`, granted only by the desk's permission set, and the Apex trigger `GtmQuoteDeskLineGuard`, which refuses any line create, edit or delete by its holders. Its Apex test (2 of 2, full coverage) proves a holder can change no line but can still decide the quote, and that nobody else is affected; the org check proves it live by asking to set a line to the quantity it already has.
 
-### Waiting on the org (parts L to O)
+### 24/11/2026, parts L to O: published, one reviewed run, checked
 
-The setup check, the seed, the publish, one reviewed run with both approvals and rejections, and `check_desk_run.py --latest --salesforce`. This section is filled in when they are done.
+- **Part L:** Israel signed the admin CLI out; no CLI login is left on the Mac.
+- **Part M:** published through the n8n API, 27 nodes, credentials found by name; the form answers 200; the live copy matches the file; chapters 2 and 4 still in step.
+- **Part N, run `n8n-8794`:** COURSES 2ND started it in Chrome; the review page showed the 8 quotes in the expected order, Q-0017 marked Check (confidence 0.5, `possible_injection`, `claims_prior_approval`), Q-0009 and Q-0011 offering only Reject. Under the label "Claude for Israel (on his yes)" (Israel delegated the choices for this test run, by the labels), Q-0003 and Q-0005 were approved and the other six rejected, each with the reason from the note. The AI's proposal matched the label on all 8. Closing page: 8 decided, 8 updated in Salesforce, 8 owners told, approver message sent, AI cost US$0.005600 (US$0.0007 a quote), nothing sent to a customer.
+- **Part O:** `check_desk_run.py --run n8n-8794 --salesforce` **7 of 7**: every quote has a person's decision with a reason; every decision a matching stamp; no fix-first quote approved; 8 of 8 reached Salesforce; 8 of 8 owners told (Gmail ids logged); every quote in Salesforce carries the logged status, reason and stamp. The stamp read from Q-0003 in Salesforce, `gtm-v2-desk DQ-n8n8794-01 | one_prompt | claude-haiku-5-5 | quote-desk-playbook@1.0.0 | approved by Claude for Israel (on his yes) | 2026-11-24T03:22:12Z`, gave the full record in one query with `--stamp`: the rule, the AI's proposal and messages, the reviewer's reason, the cost (US$0.00089), 97 seconds from proposal to decision.
+- **Where the mail went**, read from n8n's record of the run (the Gmail connector shows only the base address): the approver message to the build account's own inbox with `+gtm-approver`, all 8 owner messages with `+gtm-owner`, in the address field and in each message's own To header; Gmail answered 200 to all 9.
+
+**Two things the run showed:**
+
+1. **Q-0011 was also marked Check, "a message repeats the instructions": a false alarm, caused by the playbook.** Its rule for a reject draft gives the exact words "we are finalising the quote and will come back shortly", the AI used them, and the guard flags any eight words in a row from its instructions. Nothing leaked: the draft says only what the playbook asks. The guard is right to look; the playbook should describe that line, not script it.
+2. **The AI's approver message on Q-0003 has a wrong aside**: "a finance director or CFO would decide at a real firm". The "who would approve" column, worked out by code, says Sales manager, which is right. The structured fields are code's; the free text is the AI's, and a person reads both.
 
 ## Choices made, and why
 
