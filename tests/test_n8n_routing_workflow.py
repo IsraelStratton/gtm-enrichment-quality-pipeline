@@ -295,7 +295,9 @@ def test_demo_file_runs_through_the_salesforce_workflow():
     hs, sf = harness(), harness(workflow=SF)
     assert sf["writeNode"] == "Salesforce Upsert" and hs["writeNode"] == "HubSpot Batch Upsert"
     assert [p["route"] for p in sf["proposals"]] == [p["route"] for p in hs["proposals"]]
-    strip = lambda ds: [{k: v for k, v in d.items() if k != "crm_target"} for d in ds]  # noqa: E731
+    # The two runs read the real clock, and may fall either side of a second: compare without the time.
+    when = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+    strip = lambda ds: [{k: when.sub("<time>", v) if isinstance(v, str) else v for k, v in d.items() if k != "crm_target"} for d in ds]  # noqa: E731
     assert strip(sf["applied"]["decisions"]) == strip(hs["applied"]["decisions"])
     records = sf["applied"]["write"]["body"]["records"]
     assert len(records) == len(hs["applied"]["write"]["body"]["inputs"]) == sf["applied"]["write"]["count"]
