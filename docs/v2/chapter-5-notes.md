@@ -90,7 +90,14 @@ COURSES 2ND did parts 0 and A and made field 1 by hand, then asked for the rest 
 
 **Found on the way:** Salesforce CLI 2.159 no longer hands its access token to `sf org display`; the field holds a notice. The seed and the user script now have the CLI make each call (`sf api request rest`, body on stdin), so no script ever holds the admin's token. Its `--include` output has no blank line between the headers and the body, so the reader starts the body at the first line that opens JSON.
 
-### Waiting on the org (parts G to I, then K to O)
+### 24/11/2026, part K: the seed and the org check, 27 of 27
+
+COURSES 2ND made the External Client App (part G) and the n8n credential (part I); Israel pasted the key and secret (part H). The seed wrote 5 products with list prices (the org's standard price book was off: the seed switched it on, as quote lines need it) and the 8 demo quotes with 12 lines, each on its own opportunity, all in Needs Review. Then `salesforce_quote_desk_check.py`, signed in as the desk, passed 27 of 27, after two changes made on Israel's yes:
+
+1. **The desk could not see quote lines.** The workflow's own query stopped with `INVALID_TYPE: Didn't understand relationship 'QuoteLineItems'`: Salesforce hides quote lines, price books and price book entries from a user with no Price Books access, and the desk needs each line's list price to work out the real discount. Fixed with Price Books Read in the permission set.
+2. **Then it could change them.** With price books readable, Salesforce let the desk create, edit and delete quote lines (quantity and unit price), because line changes follow quote edit rights, and the desk needs quote edit for the status. My first message to Israel had said the change gave no new edit right; the check caught it. Israel chose to block it rather than record it: the custom permission `GTM_Quote_Desk_No_Line_Changes`, granted only by the desk's permission set, and the Apex trigger `GtmQuoteDeskLineGuard`, which refuses any line create, edit or delete by its holders. Its Apex test (2 of 2, full coverage) proves a holder can change no line but can still decide the quote, and that nobody else is affected; the org check proves it live by asking to set a line to the quantity it already has.
+
+### Waiting on the org (parts L to O)
 
 The setup check, the seed, the publish, one reviewed run with both approvals and rejections, and `check_desk_run.py --latest --salesforce`. This section is filled in when they are done.
 
@@ -107,6 +114,7 @@ The setup check, the seed, the publish, one reviewed run with both approvals and
 | Staff messages through the chapter 3 Google login, to the build account's own inbox with a tag | Send-only permission, no new login, no consent screen. The address is read from Google at run time and the engine refuses any other, so no quote field can change where mail goes. At an employer: the owner from the CRM, through the same check |
 | The approver's link is the review page itself | n8n's form pages can be opened from a link (`$execution.resumeFormUrl`), so the person who pressed Read the queue and the approver see the same page, and either can decide. n8n's own "send and wait" Gmail step needs its built-in Gmail login, which reaches all mail |
 | Standard quote statuses: Needs Review in, Approved or Rejected out | Salesforce's own values; a rep puts a quote in Needs Review to ask for the desk, as they would for an approval process |
+| An Apex guard on quote lines, not an exception on the control sheet | Salesforce gives quote-line changes to anyone who can edit the quote and see its price book; no permission set setting takes that away. A trigger that refuses holders of one custom permission keeps the desk to "status and two fields", and costs one class, one trigger and a test. Israel's choice, 24/11/2026 |
 | A second API-only user on a Salesforce licence, through its own External Client App | The one Salesforce Integration licence is GTM Integration's. Giving that user quote rights would let the routing workflow edit quotes, because a token's reach is its user's. The desk user reads quotes and edits three fields; it cannot create or delete anything |
 | The made-up quotes are written by the admin through the CLI, once | The desk user cannot create quotes, on purpose. The admin login is used for the seed only and signed out after, as in INIT-164 |
 | The lead agent: one tool a turn, not forced, stopped after 4 turns | So the drafter always drafts from the checker's answer; the lead decides when it is done; a lead that loops is stopped and counted as no answer |
@@ -134,6 +142,8 @@ The setup check, the seed, the publish, one reviewed run with both approvals and
 **In five minutes:** the queue in Salesforce; the approver's email; the review page with a fix-first quote that offers only Reject; the quote after the decision, with its stamp; `check_desk_run.py --stamp`. Then `results.md`: three designs, one bar, and why the agent team, which also passed, was not kept. Then the hand-off table for the team's run: from, to, asked, why, evidence, cost.
 
 **The "it went wrong" story for this chapter:** the design that sounded safest, a policy checker and a separate message writer in a fixed order, was the only one that failed. On the quote whose rep note tried to make the customer reply promise 40% and leak our limits, its checker twice returned an empty reason and once rejected a quote the policy accepts. The one-call design and the agent team both blocked all twelve attacks. The eval chose, not the diagram.
+
+**A third, for a Salesforce room:** giving the desk read access to price books, so it could see quote lines, silently gave it the right to change them, because Salesforce ties line edits to quote edits. I had told Israel it gave nothing new to edit; the least-reach check said otherwise on its next run. Rather than accept it, an Apex guard now refuses the desk any line change, and the check proves it every time by asking for a change that would alter nothing.
 
 **A second one:** writing the 20 test quotes found a contradiction in my own policy, a price lock that was both standard and an exception. Test cases are where a policy meets its edge cases; that is why the bar and the cases were finished before the first run.
 

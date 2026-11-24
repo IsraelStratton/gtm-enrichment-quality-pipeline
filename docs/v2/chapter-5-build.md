@@ -19,7 +19,7 @@ Who does what follows Israel's ruling of 23/11/2026 and his brief for this chapt
 | H | Two lines in `.env` | Israel pastes | To do |
 | I | n8n credential "Salesforce quote desk (client credentials)" | COURSES 2ND makes it; Israel pastes the key and secret | Made by COURSES 2ND; waiting for the key and secret from part G |
 | J | Sign the Salesforce CLI in as the admin, for parts B to E and the seed | Israel (a sign-in) | Done 24/11/2026 (alias gtm-v2-admin). It stays signed in until part L |
-| K | Seed the made-up quotes, then check the org | Code chat | Seed done 24/11/2026 (5 products, the standard price book switched on, 8 quotes with 12 lines, in Needs Review). Check: 25 of 26. Price Books Read added on Israel's yes so the desk can see quote lines; that also lets it create, edit and delete them, which the check fails on. Waiting on Israel's choice |
+| K | Seed the made-up quotes, then check the org | Code chat | Done 24/11/2026: seed (5 products, the standard price book switched on, 8 quotes with 12 lines, in Needs Review); org check **27 of 27**, signed in as the desk. On the way, two changes on Israel's yes: Price Books Read (Salesforce hid quote lines without it), and the Apex guard (with price books readable, Salesforce let the desk change quote lines) |
 | L | Sign the CLI out | Israel | To do |
 | M | Import and publish the workflow | Code chat | To do |
 | N | One reviewed run | COURSES 2ND opens the pages; Israel makes the choices, or says yes to the Code chat making them | To do |
@@ -88,6 +88,7 @@ Save. Then **Object Settings**:
 | **Accounts** | **Read** only | Nothing ticked (Account Name needs no tick) |
 | **Products** | **Read** only | Nothing extra |
 | **Price Books** | **Read** only | Nothing (added 24/11/2026 with Israel's yes: without it Salesforce hides quote lines from the desk) |
+| **Custom permission** GTM v2 quote desk: no quote line changes (`GTM_Quote_Desk_No_Line_Changes`) | Enabled | Added 24/11/2026 with Israel's yes. The Apex trigger `GtmQuoteDeskLineGuard` refuses any quote line create, edit or delete by its holders: Salesforce lets anyone who can edit a quote and see its price book change its lines |
 
 Some fields have no tick box (Salesforce always lets them be read, or works them out itself); note which ones. Nothing else in the permission set: no system permissions, no other objects, no apps or tabs.
 
@@ -191,7 +192,7 @@ python scripts/salesforce_quote_desk_check.py
 
 The seed signs in as the admin through the CLI (it reads the CLI's token and never prints it). It makes five products in the standard price book, one opportunity per demo case named `GTM v2 quote desk: Q-00NN`, and one quote per demo case with its line items, upserted on `GTM_Case_Id__c`, all in status **Needs Review**. Made-up companies already in the org (chapter 4), no contacts, no people.
 
-The check signs in exactly as n8n will and checks: scope `api` only; runs as GTM Quote Desk, API only; all seven fields as specified; it can read every demo quote with its lines, opportunity and account; it can edit a quote's status and the two desk fields (proved by writing a quote's own values back to it); it cannot create or delete a quote; it cannot edit an opportunity, account or product; it cannot read a quote's contact, email, phone or fax; it cannot touch Leads, Contacts, Cases, Users or any other custom field.
+The check signs in exactly as n8n will and checks: scope `api` only; runs as GTM Quote Desk, API only; all seven fields as specified; it can read every demo quote with its lines, opportunity and account; it can edit a quote's status and the two desk fields (proved by writing a quote's own values back to it); it cannot create or delete a quote; it cannot edit an opportunity, account, product, price book or price book entry; it can read quote lines, and the Apex guard refuses it any change to one (proved by an edit to a line's own quantity); it cannot read a quote's contact, email, phone or fax; it cannot touch Leads, Contacts, Cases, Users or any other custom field.
 
 ## L. Sign the CLI out (Israel)
 

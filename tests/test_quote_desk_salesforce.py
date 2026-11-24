@@ -151,7 +151,7 @@ def test_a_desk_that_can_create_or_delete_quotes_fails():
 
 def test_the_other_objects_must_be_read_only_or_out_of_reach():
     ro = {"queryable": True, "createable": False, "updateable": False, "deletable": False}
-    good = {"Opportunity": ro, "Account": ro, "Product2": ro, "Pricebook2": ro, "PricebookEntry": ro, "QuoteLineItem": ro,
+    good = {"Opportunity": ro, "Account": ro, "Product2": ro, "Pricebook2": ro, "PricebookEntry": ro,
             "Lead": None, "Contact": None, "Case": None}
     assert all(ok for ok, _ in org.check_other_objects(good))
     bad = dict(good, Opportunity=dict(ro, updateable=True), Contact={"queryable": True})
@@ -298,10 +298,49 @@ def test_the_desk_username_is_made_to_the_pattern_and_kept_out_of_the_repo(tmp_p
     assert private.read_text().count(name) == 1
 
 
-def test_quote_lines_the_desk_could_change_fail_the_check():
-    """Found 24/11/2026: once price books are readable, Salesforce lets a user who can edit a quote change its lines."""
-    ro = {"queryable": True, "createable": False, "updateable": False, "deletable": False}
-    seen = {n: ro for n in org.READ_ONLY_OBJECTS}
-    seen["QuoteLineItem"] = {"queryable": True, "createable": True, "updateable": True, "deletable": True}
-    failed = [t for ok, t in org.check_other_objects(seen) if not ok]
-    assert failed == ["QuoteLineItem: read only (create True, edit True, delete True)"]
+class FakeDesk:
+    """The desk's login, for the guard probe: one line, and what Salesforce says to an edit of it."""
+
+    def __init__(self, reply):
+        self.reply, self.sent = reply, []
+
+    def query(self, soql):
+        assert "FROM QuoteLineItem" in soql
+        return [{"Id": "0QL1", "Quantity": 10}]
+
+    def send(self, method, path, body=None):
+        self.sent.append((method, path, body))
+        if isinstance(self.reply, Exception):
+            raise self.reply
+        return self.reply, None
+
+
+def test_the_guard_probe_passes_only_when_the_guard_refuses_a_no_op_edit():
+    from salesforce_client import SalesforceError
+
+    guard = SETUP["line_guard"]["message"]
+    ok = FakeDesk(SalesforceError(f"PATCH /sobjects/QuoteLineItem/0QL1: FIELD_CUSTOM_VALIDATION_EXCEPTION: {guard}"))
+    assert org.line_guard_probe(ok)[0][0] and ok.sent == [("PATCH", "/sobjects/QuoteLineItem/0QL1", {"Quantity": 10})]
+    went_through = org.line_guard_probe(FakeDesk(204))[0]
+    assert not went_through[0] and "guard is not working" in went_through[1]
+    other = org.line_guard_probe(FakeDesk(SalesforceError("PATCH: INSUFFICIENT_ACCESS: no")))[0]
+    assert not other[0] and "another reason" in other[1]
+
+
+APEX = REPO / "salesforce/quote-desk/force-app/main/default"
+
+
+def test_the_apex_guard_covers_every_change_and_does_nothing_else():
+    trigger = (APEX / "triggers/GtmQuoteDeskLineGuard.trigger").read_text(encoding="utf-8")
+    assert "on QuoteLineItem (before insert, before update, before delete)" in trigger
+    cls = (APEX / "classes/GtmQuoteDeskLineGuard.cls").read_text(encoding="utf-8")
+    code = "\n".join(l for l in cls.splitlines() if not l.strip().startswith("//"))
+    assert f"'{SETUP['line_guard']['message']}'" in code and f"'{SETUP['line_guard']['custom_permission']}'" in code
+    statements = re.sub(r"'[^']*'", "''", code)  # the message itself says "delete"; only code counts
+    for forbidden in ("insert ", "update ", "delete ", "upsert ", "Database.", "Http", "Messaging", "EventBus", "callout"):
+        assert forbidden not in statements, forbidden
+    pset = (APEX / "permissionsets/GTM_v2_Quote_Desk.permissionset-meta.xml").read_text(encoding="utf-8")
+    assert "<name>GTM_Quote_Desk_No_Line_Changes</name>" in pset
+    test = (APEX / "classes/GtmQuoteDeskLineGuardTest.cls").read_text(encoding="utf-8")
+    for case in ("update new QuoteLineItem", "insert new QuoteLineItem", "delete new QuoteLineItem", "update new Quote("):
+        assert case in test

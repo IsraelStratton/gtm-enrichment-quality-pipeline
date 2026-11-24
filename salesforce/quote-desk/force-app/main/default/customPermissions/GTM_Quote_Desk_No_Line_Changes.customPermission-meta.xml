@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Held through the GTM v2 quote desk permission set. Whoever holds it may read quote lines but never create, change or delete them: the trigger GtmQuoteDeskLineGuard refuses it.</description>
+    <isLicensed>false</isLicensed>
+    <label>GTM v2 quote desk: no quote line changes</label>
+</CustomPermission>

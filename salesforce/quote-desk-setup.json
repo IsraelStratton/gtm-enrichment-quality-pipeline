@@ -256,7 +256,10 @@
         ]
       }
     },
-    "pricebook_note": "Price Books Read was added on 24/11/2026 with Israel's yes, after the first org check: without it Salesforce hides quote lines, price books and price book entries from the desk, and the desk needs each line's list price to work out the real discount. The price book holds only the five made-up products' list prices."
+    "pricebook_note": "Price Books Read was added on 24/11/2026 with Israel's yes, after the first org check: without it Salesforce hides quote lines, price books and price book entries from the desk, and the desk needs each line's list price to work out the real discount. The price book holds only the five made-up products' list prices.",
+    "custom_permissions": [
+      "GTM_Quote_Desk_No_Line_Changes"
+    ]
   },
   "desk_profile": {
     "label": "GTM v2 API only",
@@ -322,5 +325,13 @@
     "SALESFORCE_DESK_CLIENT_SECRET"
   ],
   "admin_cli_alias": "gtm-v2-admin",
-  "metadata_project": "salesforce/quote-desk (made by scripts/build_quote_desk_metadata.py from this file; deployed with the admin CLI login)"
+  "metadata_project": "salesforce/quote-desk (made by scripts/build_quote_desk_metadata.py from this file; deployed with the admin CLI login)",
+  "line_guard": {
+    "custom_permission": "GTM_Quote_Desk_No_Line_Changes",
+    "trigger": "GtmQuoteDeskLineGuard",
+    "class": "GtmQuoteDeskLineGuard",
+    "test": "GtmQuoteDeskLineGuardTest",
+    "message": "The GTM v2 quote desk may read quote lines but never create, change or delete them.",
+    "why": "Found 24/11/2026: once the desk can read price books (needed to see quote lines), Salesforce lets it create, edit and delete a quote's lines, because line changes follow quote edit rights. Israel chose to block it with Apex. The trigger refuses any line change by a holder of the custom permission, which only the desk's permission set grants."
+  }
 }

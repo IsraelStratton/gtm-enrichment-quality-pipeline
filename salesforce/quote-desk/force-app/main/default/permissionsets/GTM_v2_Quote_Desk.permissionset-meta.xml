@@ -106,6 +106,10 @@
         <field>QuoteLineItem.TotalPrice</field>
         <readable>true</readable>
     </fieldPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>GTM_Quote_Desk_No_Line_Changes</name>
+    </customPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>GTM v2 quote desk</label>
     <objectPermissions>

@@ -13,9 +13,11 @@ for chapter 5, and checks:
      current values back to it (nothing changes);
   6. what it cannot do: create or delete a quote; edit any other GTM field on a quote; see a
      quote's contact, email, phone or fax at all; create, edit or delete opportunities, accounts,
-     products, price books, price book entries or quote lines; touch leads, contacts or cases.
-     Salesforce lets anyone who can edit a quote change its lines once they can see price books
-     (found 24/11/2026), so the quote-line rule is checked on its own.
+     products, price books or price book entries; touch leads, contacts or cases;
+  7. quote lines: the desk can read them, and the Apex guard refuses any change. Salesforce lets
+     anyone who can edit a quote and see its price book change its lines (found 24/11/2026), so the
+     object's describe still says create, edit and delete; the check proves the refusal by asking
+     to edit one line to the quantity it already has. Without the guard that edit changes nothing.
 
   python scripts/salesforce_quote_desk_check.py
 
@@ -44,7 +46,8 @@ DESK_NAME = f"{USER['first_name']} {USER['last_name']}"
 USERNAME_RE = re.compile(USER["username_pattern"], re.IGNORECASE)
 EDIT = set(SETUP["standard_fields_edited"]["Quote"]) | {f["api_name"] for f in SETUP["custom_fields"] if f["desk_access"] == "edit"}
 NEVER_SEEN = SETUP["fields_never_read"]["Quote"]
-READ_ONLY_OBJECTS = ["Opportunity", "Account", "Product2", "Pricebook2", "PricebookEntry", "QuoteLineItem"]
+READ_ONLY_OBJECTS = ["Opportunity", "Account", "Product2", "Pricebook2", "PricebookEntry"]
+GUARD = SETUP["line_guard"]
 NO_ACCESS_OBJECTS = ["Lead", "Contact", "Case"]
 Result = tuple[bool, str]
 
@@ -115,6 +118,20 @@ def check_other_objects(describes: dict[str, dict | None]) -> list[Result]:
     return out
 
 
+def line_guard_probe(sf: SalesforceClient) -> list[Result]:
+    """Ask to set one demo quote line to its own quantity: the guard must refuse it."""
+    lines = sf.query("SELECT Id, Quantity FROM QuoteLineItem WHERE Quote.GTM_Case_Id__c != null LIMIT 1")
+    if not lines:
+        return [(False, "no quote line to prove the guard on: run scripts/seed_quotes.py --admin")]
+    line = lines[0]
+    try:
+        status, _ = sf.send("PATCH", f"/sobjects/QuoteLineItem/{line['Id']}", {"Quantity": line["Quantity"]})
+        return [(False, f"the desk could edit a quote line (HTTP {status}; the same quantity was written, so nothing changed): the Apex guard is not working")]
+    except SalesforceError as e:
+        refused = GUARD["message"] in str(e)
+        return [(refused, "the Apex guard refuses the desk any quote line change" + ("" if refused else f" (refused for another reason: {e})"))]
+
+
 def check_queue(records: list[dict]) -> list[Result]:
     demo = {c["case_id"]: c for c in CASES["cases"] if c["demo"]}
     seen = {r.get("GTM_Case_Id__c"): r for r in records}
@@ -156,7 +173,10 @@ def main(argv: list[str] | None = None) -> int:
         describes = {n: sf.data(f"/sobjects/{n}/describe", ok_404=True) for n in READ_ONLY_OBJECTS + NO_ACCESS_OBJECTS}
         results += check_other_objects(describes)
         records = sf.query(desk_soql().replace("Status, ExpirationDate", "Status, GTM_Desk_Reason__c, GTM_Desk_Stamp__c, ExpirationDate", 1))
+        line_describe = sf.data("/sobjects/QuoteLineItem/describe", ok_404=True) or {}
+        results.append((bool(line_describe.get("queryable")), "QuoteLineItem: the desk can read quote lines"))
         results += check_queue(records)
+        results += line_guard_probe(sf)
         if records:
             results.append(edit_probe(sf, records[0]))
         else:

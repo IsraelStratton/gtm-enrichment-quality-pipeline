@@ -98,6 +98,8 @@ def permission_set_xml() -> str:
             fields.append((f"{obj}.{name}", False))
     for name, edit in sorted(fields):
         b += "    <fieldPermissions>\n" + tag("editable", edit, 8) + tag("field", name, 8) + tag("readable", True, 8) + "    </fieldPermissions>\n"
+    for name in ps.get("custom_permissions", []):
+        b += "    <customPermissions>\n" + tag("enabled", True, 8) + tag("name", name, 8) + "    </customPermissions>\n"
     b += tag("hasActivationRequired", False) + tag("label", ps["label"])
     for obj in sorted(ps["object_permissions"]):
         allowed = set(ps["object_permissions"][obj])
