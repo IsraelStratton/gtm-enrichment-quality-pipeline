@@ -208,11 +208,55 @@ cd ~/gtm-enrichment-quality-pipeline && .venv/bin/python scripts/fire_slice.py -
 2. Israel gets two approval requests by email, reads each AI note, and approves.
 3. Pass when there are 2 records with `written_by` = `zapier-pro`, 2 emails carrying the approved note, and the wrong-key run stopped at the Filter with no task used.
 4. COURSES 2ND notes the tasks used per lead, and records a short clip of the Zap and one run.
-5. On 24/11/2026: lead `L-0003`, then way 3.
+5. On 24/11/2026: lead `L-0003`, then way 3 (next section).
 
-## Ways 3 and 4
+## 24/11/2026: lead L-0003 with Israel's own Approve, then way 3
 
-| Way | What | State |
-|---|---|---|
-| 3 | Zapier MCP: Claude runs one Zapier action, adding a record to the tracker Table, which sets off Zap 2 | 24/11/2026. Israel signs in to connect Zapier MCP and exposes only "Zapier Tables: Create Record". One MCP call uses 2 tasks |
-| 4 | Zapier admin settings on paper | Done: [zapier-admin-on-paper.md](../../docs/v2/zapier-admin-on-paper.md) |
+**Who does what.** COURSES 2ND clicks in Zapier: Zaps on and off, opening pages, reading the Table. Israel does the sign-ins, the consent screens, the Approve press and the recording. The Code chat fires the lead, makes the one MCP call, checks the emails and writes the notes.
+
+**Email budget.** Email by Zapier sends 5 emails a day. Today plans 2: the L-0003 owner email, and Zap 2's email after the MCP record. Zapier also sends one approval notice. That leaves room for one retry; a second failure stops the runs for the day.
+
+**Zap states.** All three Zaps are off at the start and at the end. Zap 2 stays off while the Pro Zap runs: the Pro Zap and the MCP call both add records to the same Table, and Zap 2 emails the owner for every new record.
+
+### Part 1: L-0003 on the Pro Zap
+
+| # | Who | Step | Check |
+|---|---|---|---|
+| 1 | COURSES 2ND | Zapier, Zaps. Confirm `GTM v2 slice 1 of 2` and `GTM v2 slice 2 of 2` are **Off**. Switch `GTM v2 slice: approved lead (Zapier Pro)` **On**. Read the trial's end date and the tasks used | Reports: Pro on, both Free Zaps off, trial end, tasks used |
+| 2 | Code chat | `.venv/bin/python scripts/fire_slice.py --target zapier --lead L-0003` | HTTP 200. The run ID goes in the notes |
+| 3 | COURSES 2ND | Zap history: the L-0003 run waits at step 5. Open its approval page in a Chrome tab, from the run or from Human in the Loop's list of requests. **Press nothing.** Open two more tabs: the Pro Zap's run history, and the Table `GTM v2 tracker (Zapier)` | Reports: the approval page shows Copperleaf Energy and the AI note |
+| 4 | Israel | Record the clip (below): read the note, press **Approve** | Clip saved |
+| 5 | Code chat | Find the owner email by its subject and run ID. Check that it carries the approved note | The email matches the run |
+| 6 | COURSES 2ND | Table: the L-0003 record with `written_by` = `zapier-pro` and the same run ID. Zap history: the run is Successful; note its tasks. Switch the Pro Zap **Off** | Reports: record, status, tasks, Pro off |
+
+**The clip (Israel, about 40 seconds).**
+
+1. Press Cmd+Shift+5 and choose **Record Selected Portion**. Draw the box over the Chrome page only: leave out the tab strip and the profile picture. Options: Save to Movies; microphone off, unless you narrate.
+2. Start on the approval tab. Read the note for a moment, then press **Approve**.
+3. Go to the run-history tab and reload: the L-0003 run shows Successful. **Do not open** the trigger step (it shows the key header) or step 7 (it shows the owner's address).
+4. Go to the Table tab: the new L-0003 row, `written_by` = `zapier-pro`.
+5. Stop the recording from the menu bar. Name the file `ch3-zapier-pro-L-0003-approve.mov` and keep it out of the repo. The wrap decides where clips go.
+
+No Gmail on screen, and no account picture.
+
+### Part 2: way 3, Zapier MCP (Claude runs one action)
+
+**What Zapier's docs say (read 24/11/2026).** One address serves every client, and sign-in is by OAuth, so the address holds no secret. Each successful call uses 2 tasks; a failed call uses none. **A new server starts in agentic mode.** In that mode Claude gets 16 tools that can find and switch on any Zapier action, and auto-provisioning switches on actions for every app already connected to the account. That breaks the one-action rule, so the server is switched to **managed mode**: Claude then sees one tool per action and cannot add actions. The Code chat calls no Zapier tool until it sees exactly one.
+
+| # | Who | Step | Check |
+|---|---|---|---|
+| 1 | Code chat | `claude mcp add --transport http "Zapier-MCP" https://mcp.zapier.com/api/v1/connect`. Local scope: this folder only, saved in Claude Code's own settings, not in the repo | `claude mcp list` shows it, waiting for sign-in |
+| 2 | Israel | In this Code session type `/mcp`, pick `Zapier-MCP`, then **Authenticate**. On Zapier's screen sign in, press **Continue**, then **Allow**. **Do not paste Zapier's "Copy prompt" text into any chat**: it starts Zapier's onboarding, which switches actions on. Tell the Code chat what the Allow screen listed. If `/mcp` does not list `Zapier-MCP`, the session started before the server was added: open a new Code session in this folder for part 2 and sign in there | Connected. The Code chat calls nothing yet |
+| 3 | COURSES 2ND | mcp.zapier.com, the new server. **Settings** (gear), **Managed mode**, **Save changes**. **Apps** tab: remove every action listed. **+ Add tool**, Zapier Tables, tick **Create Record** only. If it asks for a sign-in or a connection, stop: that is Israel's. Then the action's ⋮ menu, **Configure**: Table, "Set a specific value", `GTM v2 tracker (Zapier)`; `written_by`, "Set a specific value", `claude-mcp`; every other field, "Have AI generate a value". **Save**. Do not open the Connect tab | Reports: managed mode, one action, the two fixed fields |
+| 4 | Code chat | Refresh the tool list. If asked, Israel presses Reconnect in `/mcp`. List the Zapier tools | Exactly one: Create Record. Anything more: stop and tell Israel |
+| 5 | COURSES 2ND | Switch `GTM v2 slice 2 of 2: tracker row to owner email` **On**. Zap 1 and the Pro Zap stay off | Reports: Zap 2 on |
+| 6 | Code chat | One call: Create Record with L-0001's values from [approved_leads.json](../approved_leads.json), run ID `slice-claude-mcp-<UTC time>-L-0001`, `sent_at` and `received_at` at the time of the call | The call returns a record ID |
+| 7 | Code chat | Find Zap 2's email for that run ID | Email arrived |
+| 8 | COURSES 2ND | Table: the record with `written_by` = `claude-mcp`. Zap 2's history: one successful run. mcp.zapier.com: the server's log shows one call. Switch Zap 2 **Off**; confirm all three Zaps are off | Reports: record, run, call, all off |
+| 9 | Code chat, then Israel | Code chat: `claude mcp remove "Zapier-MCP" -s local`. Israel: on mcp.zapier.com, revoke Claude Code's connection. Keep the server, so its log stays | No Zapier server in Claude Code; no connected client in Zapier |
+
+**Why a fixed Table and a fixed `written_by`.** Claude can write one kind of record to one table, and every record it writes says it came from Claude. It reads nothing, deletes nothing and sends nothing itself. With Zap 2 on, the new record emails the owner, so Zapier becomes Claude's route into email without Claude holding any mail login. The lead was approved earlier by a person (`approved_by` in the sample): Claude records the decision, it does not make it.
+
+## Way 4
+
+Zapier admin settings on paper. Done: [zapier-admin-on-paper.md](../../docs/v2/zapier-admin-on-paper.md).
