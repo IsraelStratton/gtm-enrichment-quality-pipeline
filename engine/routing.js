@@ -859,6 +859,8 @@ function summariseDecisions(rows) {
 
 const ENGINE = {
   ENGINE_VERSION, GUARD_FLAGS, REJECT_LABEL, GUARD_RULES,
+  // Shared with the quote desk (engine/quotes.js), which pastes this file above its own in n8n.
+  INJECTION_PATTERNS, EMAIL_RE, PHONE_RE, parseFrontMatter, tableAfterHeading, codeCell, unquote, wordGrams, safeJson, isoSeconds,
   parsePlaybook, allowedRoutes, sha256Hex, normaliseDomain, toCount, leadFromRow, decisionId, modelRecord,
   buildSystemPrompt, buildSchema, buildRequest, screenEnquiry, quotesInstructions, validateOutput, normaliseHttp,
   checkProposal, reviewOptions, sortForReview, buildReviewForm, parseChoice, buildStamp, hubspotInput,

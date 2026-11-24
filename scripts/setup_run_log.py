@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Create or update the chapter 2 run log in the local Supabase Postgres, then prove its limits.
+"""Create or update the run log in the local Supabase Postgres, then prove its limits.
 
-  1. Applies db/run_log.sql as the database owner (inside the Supabase db container).
+  1. Applies db/run_log.sql (chapters 2 and 4) and db/quote_desk.sql (chapter 5) as the database
+     owner (inside the Supabase db container).
   2. Creates the login gtm_v2_pipeline. Its password is made here, written to .env as
      GTM_V2_DB_PASSWORD and never printed. Israel pastes it into the n8n Postgres credential.
-  3. Grants that login the two add-only functions and the views, nothing else.
+  3. Grants that login the add-only functions and the views, nothing else.
   4. Loads pricing/claude_prices.json into gtm_v2.model_prices.
   5. Signs in as gtm_v2_pipeline and checks what it can and cannot do.
 
@@ -28,6 +29,7 @@ from dotenv import dotenv_values, load_dotenv
 REPO = Path(__file__).resolve().parents[1]
 ENV = REPO / ".env"
 SQL = REPO / "db" / "run_log.sql"
+DESK_SQL = REPO / "db" / "quote_desk.sql"
 PRICES = REPO / "pricing" / "claude_prices.json"
 ROLE = "gtm_v2_pipeline"
 PASSWORD_KEY = "GTM_V2_DB_PASSWORD"
@@ -88,6 +90,8 @@ alter role {ROLE} set search_path = gtm_v2;
 grant usage on schema gtm_v2 to {ROLE};
 grant execute on function gtm_v2.log_proposals(jsonb), gtm_v2.log_decisions(jsonb) to {ROLE};
 grant select on gtm_v2.decision_record, gtm_v2.run_summary, gtm_v2.cost_by_route to {ROLE};
+grant execute on function gtm_v2.log_desk_triage(jsonb, jsonb, jsonb), gtm_v2.log_desk_decisions(jsonb) to {ROLE};
+grant select on gtm_v2.desk_record, gtm_v2.desk_run_summary, gtm_v2.handoff_record to {ROLE};
 """
 
 
@@ -143,6 +147,14 @@ def check_limits(settings: dict[str, str], password: str) -> list[tuple[str, boo
         expect_denied(conn, "cannot update decisions", "update gtm_v2.decisions set approver = 'x'")
         expect_denied(conn, "cannot delete proposals", "delete from gtm_v2.proposals")
         expect_denied(conn, "cannot change prices", "update gtm_v2.model_prices set input_per_mtok = 0")
+        conn.execute("select count(*) from gtm_v2.desk_run_summary").fetchone()
+        results.append(("can read the quote desk run summary view", True))
+        conn.execute("select gtm_v2.log_desk_triage('[]'::jsonb, '[]'::jsonb, '[]'::jsonb)").fetchone()
+        results.append(("can call log_desk_triage", True))
+        expect_denied(conn, "cannot read the desk_proposals table directly", "select 1 from gtm_v2.desk_proposals limit 1")
+        expect_denied(conn, "cannot insert into handoffs directly", "insert into gtm_v2.handoffs (handoff_id) values ('x')")
+        expect_denied(conn, "cannot update desk_decisions", "update gtm_v2.desk_decisions set approver = 'x'")
+        expect_denied(conn, "cannot delete desk_calls", "delete from gtm_v2.desk_calls")
         # pg_tables lists every table whatever the login may read (information_schema would hide them).
         for schema in ("ec", "public"):
             other = conn.execute(
@@ -166,8 +178,10 @@ def main(argv: list[str] | None = None) -> int:
         if not args.check:
             psql(settings["container"], SQL.read_text(encoding="utf-8"))
             print("Applied db/run_log.sql (schema gtm_v2: proposals, decisions, model_prices, three views).")
+            psql(settings["container"], DESK_SQL.read_text(encoding="utf-8"))
+            print("Applied db/quote_desk.sql (desk_proposals, desk_calls, handoffs, desk_decisions, four views).")
             psql(settings["container"], role_sql(password))
-            print(f"Login {ROLE} ready: two add-only functions and three views. Password is in .env as {PASSWORD_KEY}.")
+            print(f"Login {ROLE} ready: four add-only functions and six views. Password is in .env as {PASSWORD_KEY}.")
             prices = json.loads(PRICES.read_text(encoding="utf-8"))
             psql(settings["container"], prices_sql(prices))
             print(f"Loaded {len(prices['models'])} model prices from pricing/claude_prices.json.")

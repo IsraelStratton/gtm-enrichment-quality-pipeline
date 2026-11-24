@@ -222,7 +222,7 @@ python scripts/check_desk_run.py --latest --salesforce
 python scripts/check_desk_run.py --stamp "<a GTM desk stamp copied from a quote in Salesforce>"
 ```
 
-It passes when every proposal has a person's decision; every decided quote carries a stamp matching its log row; every reject has a reason; no quote that had to be fixed was approved; each quote in Salesforce carries the logged status, reason and stamp; and the owner message for each decision was sent to the build account's own inbox and nowhere else.
+It passes when every quote triaged has a person's decision with a reason; every decision carries a stamp matching its log row; no quote that had to be fixed was approved; every decision reached Salesforce; Gmail accepted a message for the owner of every saved quote (its id is in the log; the address is the build account's own, fixed in code and tested); and, with `--salesforce`, each quote carries the logged status, reason and stamp.
 
 ## Switching it off
 

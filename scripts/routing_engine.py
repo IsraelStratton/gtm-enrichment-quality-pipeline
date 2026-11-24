@@ -36,13 +36,16 @@ class Ref(dict):
 
 
 class Engine:
-    def __init__(self, node: str | None = None):
+    """module: "routing" (engine/routing.js, chapters 2 and 4) or "quotes" (engine/quotes.js, chapter 5)."""
+
+    def __init__(self, node: str | None = None, module: str = "routing"):
         self.node = node or shutil.which("node")
+        self.module = module
         if not self.node:
             raise EngineError("node is not installed; the routing engine needs Node.js 18 or later")
 
     def batch(self, calls: list[tuple[str, list[Any]]]) -> list[Any]:
-        payload = json.dumps({"calls": [{"fn": fn, "args": args} for fn, args in calls]})
+        payload = json.dumps({"module": self.module, "calls": [{"fn": fn, "args": args} for fn, args in calls]})
         out = subprocess.run([self.node, str(CLI_JS)], input=payload, capture_output=True, text=True, check=False)
         if out.returncode != 0 and not out.stdout:
             raise EngineError(out.stderr.strip() or f"node exited with {out.returncode}")

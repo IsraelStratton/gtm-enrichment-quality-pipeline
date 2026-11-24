@@ -1,12 +1,14 @@
-"""A small Salesforce REST client for the chapter 4 checks. It only reads.
+"""A small Salesforce REST client for the chapter 4 and 5 checks.
 
-It signs in with the client-credentials flow of the External Client App "GTM v2 routing (n8n)",
-the same login n8n uses, so a check sees exactly what the workflow can see. The values come
-from .env and are never printed:
+It signs in with the client-credentials flow of an External Client App, the same login n8n uses,
+so a check sees exactly what the workflow can see. Two logins, chosen with `login`:
 
-  SALESFORCE_DOMAIN         the org's My Domain host, such as something.develop.my.salesforce.com
-  SALESFORCE_CLIENT_ID      the app's consumer key
-  SALESFORCE_CLIENT_SECRET  the app's consumer secret
+  routing (chapter 4)  "GTM v2 routing (n8n)", run as GTM Integration: SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET
+  desk (chapter 5)     "GTM v2 quote desk (n8n)", run as GTM Quote Desk: SALESFORCE_DESK_CLIENT_ID, SALESFORCE_DESK_CLIENT_SECRET
+
+Both use SALESFORCE_DOMAIN, the org's My Domain host. The values come from .env and are never
+printed. Only the chapter 5 setup check and the demo reset write, and only through the desk's
+own narrow login (see scripts/salesforce_quote_desk_check.py and scripts/seed_quotes.py).
 
 Errors name the step and Salesforce's error code, never a value from .env.
 """
@@ -24,6 +26,10 @@ REPO = Path(__file__).resolve().parents[1]
 SETUP = json.loads((REPO / "salesforce" / "setup.json").read_text(encoding="utf-8"))
 API_VERSION = SETUP["api_version"]
 ENV_KEYS = SETUP["env_keys"]
+LOGINS = {
+    "routing": ("SALESFORCE_DOMAIN", "SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET"),
+    "desk": ("SALESFORCE_DOMAIN", "SALESFORCE_DESK_CLIENT_ID", "SALESFORCE_DESK_CLIENT_SECRET"),
+}
 HOST_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.my\.salesforce\.com$")
 
 
@@ -38,15 +44,16 @@ class ConfigError(RuntimeError):
     pass
 
 
-def settings_from_env(env_path: Path = REPO / ".env") -> dict[str, str]:
+def settings_from_env(env_path: Path = REPO / ".env", login: str = "routing") -> dict[str, str]:
+    domain_key, id_key, secret_key = LOGINS[login]
     values = dotenv_values(env_path) if env_path.exists() else {}
-    missing = [k for k in ENV_KEYS if not (values.get(k) or "").strip()]
+    missing = [k for k in (domain_key, id_key, secret_key) if not (values.get(k) or "").strip()]
     if missing:
         raise ConfigError(f"not in .env yet: {', '.join(missing)}")
-    host = values["SALESFORCE_DOMAIN"].strip().removeprefix("https://").rstrip("/").lower()
+    host = values[domain_key].strip().removeprefix("https://").rstrip("/").lower()
     if not HOST_RE.match(host):
         raise ConfigError("SALESFORCE_DOMAIN must be the org's My Domain host, ending in .my.salesforce.com")
-    return {"host": host, "client_id": values["SALESFORCE_CLIENT_ID"].strip(), "client_secret": values["SALESFORCE_CLIENT_SECRET"].strip()}
+    return {"host": host, "client_id": values[id_key].strip(), "client_secret": values[secret_key].strip()}
 
 
 def _error(resp: requests.Response, step: str) -> SalesforceError:
@@ -72,8 +79,8 @@ class SalesforceClient:
         self._token: dict | None = None
 
     @classmethod
-    def from_env(cls, env_path: Path = REPO / ".env") -> "SalesforceClient":
-        return cls(**settings_from_env(env_path))
+    def from_env(cls, env_path: Path = REPO / ".env", login: str = "routing") -> "SalesforceClient":
+        return cls(**settings_from_env(env_path, login))
 
     def sign_in(self) -> dict:
         """Client-credentials token. Returns what the token says about itself, never the token."""
@@ -119,6 +126,17 @@ class SalesforceClient:
 
     def query(self, soql: str) -> list[dict]:
         return self.data(f"/query?q={quote(soql)}")["records"]
+
+    def send(self, method: str, path: str, body: dict | list | None = None, ok_status: tuple = (200, 201, 204)):
+        """A write, for the desk's own login only. Returns (status, body); raises with Salesforce's code otherwise."""
+        if self._token is None:
+            self.sign_in()
+        url = f"https://{self.host}/services/data/{API_VERSION}{path}"
+        resp = self.session.request(method, url, timeout=30, json=body,
+                                    headers={"Authorization": f"Bearer {self._token['access_token']}", "Content-Type": "application/json"})
+        if resp.status_code not in ok_status:
+            raise _error(resp, f"{method} {path.split('?')[0]}")
+        return resp.status_code, (resp.json() if resp.content else None)
 
     def account(self, record_id: str, fields: list[str]) -> dict | None:
         return self.data(f"/sobjects/Account/{quote(record_id)}?fields={','.join(fields)}", ok_404=True)

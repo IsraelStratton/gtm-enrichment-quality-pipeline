@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Put a routing workflow into the local n8n through its API, and check the live copy against the file.
+"""Put a GTM v2 workflow into the local n8n through its API, and check the live copy against the file.
 
   python scripts/n8n_publish_routing.py --target salesforce           # create or update, then publish
   python scripts/n8n_publish_routing.py --target hubspot              # bring chapter 2's live copy in step
+  python scripts/n8n_publish_routing.py --target quote_desk           # chapter 5's quote desk
   python scripts/n8n_publish_routing.py --target salesforce --check   # compare only; change nothing
 
 What it does, so nothing is clicked by hand and nothing drifts:
-  1. builds the workflow with scripts/build_n8n_routing.py (the Salesforce one with the org's
-     host from .env, SALESFORCE_DOMAIN), exactly as the committed file plus that host;
+  1. builds the workflow with scripts/build_n8n_routing.py, or scripts/build_n8n_quote_desk.py for
+     the quote desk (the Salesforce ones with the org's host from .env, SALESFORCE_DOMAIN), exactly
+     as the committed file plus that host;
   2. finds each credential the file names in n8n, by name and type, and fills in its ID. It
      never reads or sends a secret: n8n keeps those;
   3. creates the workflow, or updates the one with the same name, then publishes it. n8n
@@ -37,6 +39,7 @@ import requests
 from dotenv import dotenv_values
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import build_n8n_quote_desk as desk_build  # noqa: E402
 import build_n8n_routing as build  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
@@ -132,7 +135,17 @@ def request_body(wanted: dict, live: dict | None, trigger: str = "Upload CSV") -
     return body
 
 
+TARGETS = dict(build.TARGETS, quote_desk=desk_build.TARGET)
+SALESFORCE_TARGETS = {"salesforce", "quote_desk"}
+
+
+def trigger_name(target: str) -> str:
+    return TARGETS[target].get("trigger", "Upload CSV")
+
+
 def wanted_workflow(target: str) -> dict:
+    if target == "quote_desk":
+        return desk_build.build(build.salesforce_host_from_env())
     if target == "salesforce":
         return build.build("salesforce", build.salesforce_host_from_env())
     return build.build(target)
@@ -140,7 +153,7 @@ def wanted_workflow(target: str) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--target", choices=sorted(build.TARGETS), required=True)
+    ap.add_argument("--target", choices=sorted(TARGETS), required=True)
     ap.add_argument("--check", action="store_true", help="compare the live workflow with the file; change nothing")
     args = ap.parse_args(argv)
     env = dotenv_values(REPO / ".env")
@@ -150,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         print("CANNOT RUN N8N_API_KEY is not in .env")
         return 2
     n8n = N8n(base, key)
-    t = build.TARGETS[args.target]
+    t = TARGETS[args.target]
     try:
         wanted = with_credential_ids(wanted_workflow(args.target), n8n.all("/credentials"))
         found = [w for w in n8n.all("/workflows") if w["name"] == t["name"]]
@@ -166,10 +179,10 @@ def main(argv: list[str] | None = None) -> int:
             for d in diff:
                 print(f"DIFFERS {d}")
             print(f"{'In step' if not diff else 'Out of step'}: the live '{t['name']}' {'matches' if not diff else 'does not match'} "
-                  f"{t['output'].relative_to(REPO)}{' (plus the org host from .env)' if args.target == 'salesforce' else ''}; "
+                  f"{t['output'].relative_to(REPO)}{' (plus the org host from .env)' if args.target in SALESFORCE_TARGETS else ''}; "
                   f"{'published' if live.get('active') else 'not published'}.")
             return 0 if not diff and live.get("active") else 1
-        body = request_body(wanted, live)
+        body = request_body(wanted, live, trigger_name(args.target))
         if live is not None:
             saved = n8n.call("PUT", f"/workflows/{live['id']}", body)
             verb = "Updated"

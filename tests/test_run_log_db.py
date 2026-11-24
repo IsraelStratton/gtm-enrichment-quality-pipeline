@@ -15,18 +15,24 @@ sys.path.insert(0, str(REPO / "scripts"))
 import setup_run_log as srl  # noqa: E402
 
 SQL = (REPO / "db/run_log.sql").read_text(encoding="utf-8")
+DESK_SQL = (REPO / "db/quote_desk.sql").read_text(encoding="utf-8")
 
 
-def test_the_pipeline_login_gets_two_functions_and_three_views_only():
+def test_the_pipeline_login_gets_four_functions_and_six_views_only():
     grants = [line.strip() for line in srl.role_sql("abc_DEF-123").splitlines() if line.strip().startswith("grant")]
     assert grants == [
         "grant usage on schema gtm_v2 to gtm_v2_pipeline;",
         "grant execute on function gtm_v2.log_proposals(jsonb), gtm_v2.log_decisions(jsonb) to gtm_v2_pipeline;",
         "grant select on gtm_v2.decision_record, gtm_v2.run_summary, gtm_v2.cost_by_route to gtm_v2_pipeline;",
+        # Chapter 5, the quote desk (db/quote_desk.sql).
+        "grant execute on function gtm_v2.log_desk_triage(jsonb, jsonb, jsonb), gtm_v2.log_desk_decisions(jsonb) to gtm_v2_pipeline;",
+        "grant select on gtm_v2.desk_record, gtm_v2.desk_run_summary, gtm_v2.handoff_record to gtm_v2_pipeline;",
     ]
-    lowered = SQL.lower()
-    assert "revoke all on all tables in schema gtm_v2 from public" in lowered
-    assert "grant update" not in lowered and "grant delete" not in lowered and "grant insert" not in lowered
+    for text in (SQL, DESK_SQL):
+        lowered = text.lower()
+        assert "revoke all on all tables in schema gtm_v2 from public" in lowered
+        assert "grant update" not in lowered and "grant delete" not in lowered and "grant insert" not in lowered
+    assert "security definer" in DESK_SQL and "check (approve_allowed = not fix_needed)" in DESK_SQL
 
 
 def test_password_must_be_safe_inside_sql():
@@ -123,5 +129,83 @@ def test_a_proposal_cannot_be_logged_twice():
         with pytest.raises(psycopg.errors.UniqueViolation):
             with conn.transaction(force_rollback=True):
                 conn.execute("select gtm_v2.log_proposals(%s::jsonb)", (json.dumps([proposal(), proposal()]),))
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------- chapter 5, the quote desk
+
+
+def desk_proposal(decision_id="DQ-pytest-01", **over):
+    p = {"decision_id": decision_id, "run_id": "pytest-desk", "source": "python", "design": "agent_team", "case_id": "Q-0003",
+         "quote_id": "Q-0003", "quote_name": "Kestrel Logistics: three-year platform", "account_name": "Kestrel Logistics",
+         "model": "claude-haiku-5-5", "playbook_name": "quote-desk-playbook", "playbook_version": "1.0.0", "playbook_sha256": "0" * 64,
+         "engine_version": "1.0.0", "output_valid": True, "code_rules": ["discount_over_10"], "ai_rules": [], "rules": ["discount_over_10"],
+         "exceptions": [{"rule": "discount_over_10", "evidence": "13.85%"}], "approvers": ["sales_manager"], "fix_needed": False,
+         "approve_allowed": True, "proposed_action": "approve", "reason": "Multi-year.", "approver_message": "A.", "customer_reply_draft": "B.",
+         "draft_problems": [], "confidence": 0.9, "flags": [], "needs_review": False, "review_reasons": [], "review_detail": "",
+         "effective_discount_pct": 13.85, "deal_size": 168000, "date_at_risk": "2027-01-08", "position": 1, "calls": 2, "handoffs": 1,
+         "input_tokens": 9000, "output_tokens": 600, "latency_ms": 9000, "proposed_at": "2026-11-24T05:00:00Z"}
+    p.update(over)
+    return p
+
+
+def desk_calls(decision_id="DQ-pytest-01"):
+    return [{"call_id": f"{decision_id}-C{i}", "decision_id": decision_id, "run_id": "pytest-desk", "design": "agent_team", "agent": a,
+             "turn": i, "model": "claude-haiku-5-5", "input_tokens": 4500, "output_tokens": 300, "latency_ms": 4500, "ok": True}
+            for i, a in ((1, "lead_agent"), (2, "policy_checker"))]
+
+
+def desk_handoff(decision_id="DQ-pytest-01"):
+    return [{"handoff_id": f"{decision_id}-H1", "decision_id": decision_id, "run_id": "pytest-desk", "design": "agent_team",
+             "from_agent": "lead_agent", "to_agent": "policy_checker", "asked": "ask_policy_checker", "why": "check first",
+             "evidence": "discount_over_10: 13.85%", "confidence": 0.9, "call_id": f"{decision_id}-C2"}]
+
+
+def desk_decision(decision_id="DQ-pytest-01", **over):
+    d = {"decision_id": decision_id, "run_id": "pytest-desk", "case_id": "Q-0003", "quote_id": "Q-0003", "position": 1, "action": "approved",
+         "reason": "Three-year term.", "approver": "reviewer-01", "decided_at": "2026-11-24T05:02:00Z", "matches_proposal": True,
+         "sf_status": "Approved", "crm_write_status": "written", "owner_message_status": "sent", "owner_message_id": "m1",
+         "stamp": "gtm-v2-desk DQ-pytest-01 | agent_team | claude-haiku-5-5 | quote-desk-playbook@1.0.0 | approved by reviewer-01 | 2026-11-24T05:02:00Z"}
+    d.update(over)
+    return d
+
+
+def test_a_desk_triage_reads_back_with_its_hand_off_and_the_cost_of_every_call():
+    conn = live_connection()
+    try:
+        with conn.transaction(force_rollback=True):
+            n = conn.execute("select gtm_v2.log_desk_triage(%s::jsonb, %s::jsonb, %s::jsonb)",
+                             (json.dumps([desk_proposal()]), json.dumps(desk_calls()), json.dumps(desk_handoff()))).fetchone()[0]
+            assert n == 1
+            assert conn.execute("select gtm_v2.log_desk_decisions(%s::jsonb)", (json.dumps([desk_decision()]),)).fetchone()[0] == 1
+            cur = conn.execute("select * from gtm_v2.desk_record where decision_id = 'DQ-pytest-01'")
+            r = dict(zip([c.name for c in cur.description], cur.fetchone()))
+            assert float(r["cost_usd"]) == pytest.approx(2 * (4500 * 0.10 + 300 * 0.50) / 1e6)
+            assert (r["rules"], r["action"], r["queue_position"], r["seconds_to_decision"]) == ("discount_over_10", "approved", 1, 120)
+            cur = conn.execute("select from_agent, to_agent, input_tokens, cost_usd from gtm_v2.handoff_record where run_id = 'pytest-desk'")
+            h = cur.fetchone()
+            assert h[:3] == ("lead_agent", "policy_checker", 4500) and float(h[3]) == pytest.approx((4500 * 0.10 + 300 * 0.50) / 1e6)
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("prop, dec", [
+    (desk_proposal(fix_needed=True, approve_allowed=True), None),                                         # a fix quote marked approvable
+    (desk_proposal(fix_needed=True, approve_allowed=False), desk_decision()),                             # an approved fix quote
+    (desk_proposal(), desk_decision(reason=" ")),                                                         # no reason
+    (desk_proposal(), desk_decision(sf_status="Rejected")),                                               # approved, but the quote says rejected
+    (desk_proposal(), desk_decision(stamp="no stamp")),                                                   # not a desk stamp
+])
+def test_the_desk_log_refuses_what_breaks_its_rules(prop, dec):
+    import psycopg
+
+    conn = live_connection()
+    try:
+        with pytest.raises((psycopg.errors.IntegrityError, psycopg.errors.RaiseException)):
+            with conn.transaction(force_rollback=True):
+                conn.execute("select gtm_v2.log_desk_triage(%s::jsonb, '[]'::jsonb, '[]'::jsonb)", (json.dumps([prop]),))
+                if dec:
+                    conn.execute("select gtm_v2.log_desk_decisions(%s::jsonb)", (json.dumps([dec]),))
     finally:
         conn.close()
