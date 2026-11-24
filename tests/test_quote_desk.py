@@ -551,15 +551,18 @@ def test_the_results_file_names_the_kept_design_and_every_figure_is_made_by_the_
     assert 0 < s["fixed_chain"]["handoffs_per_quote"] <= 1 and s["agent_team"]["handoffs_per_quote"] >= 2
 
 
-def test_the_playbook_change_that_failed_the_bar_is_kept_as_evidence_and_is_not_live():
-    """1.0.1 (24/11/2026) failed the bar and was rolled back: its text and results stay beside the live ones."""
+@pytest.mark.parametrize("version", ["1.0.1", "1.0.2"])
+def test_the_playbook_changes_that_failed_the_bar_are_kept_as_evidence_and_are_not_live(version):
+    """1.0.1 and 1.0.2 (24/11/2026) left the live design below the bar: their text and results stay beside the live ones."""
     import hashlib
 
     ev = REPO / "skins/quote-desk/eval"
-    text = (ev / "playbook-1.0.1-not-kept.md").read_text(encoding="utf-8")
-    res = json.loads((ev / "results-1.0.1-not-kept.json").read_text(encoding="utf-8"))
-    assert res["kept"] is None and res["playbook"]["version"] == "1.0.1"
+    text = (ev / f"playbook-{version}-not-kept.md").read_text(encoding="utf-8")
+    res = json.loads((ev / f"results-{version}-not-kept.json").read_text(encoding="utf-8"))
+    assert res["playbook"]["version"] == version and f'version: "{version}"' in text
     assert res["playbook"]["sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
-    assert (ev / "results-1.0.1-not-kept.md").read_text(encoding="utf-8") == quote_desk.results_markdown(copy.deepcopy(res))
+    assert (ev / f"results-{version}-not-kept.md").read_text(encoding="utf-8") == quote_desk.results_markdown(copy.deepcopy(res))
+    assert not res["designs"]["one_prompt"]["summary"]["passes"]  # the live design missed the bar on it
     live = json.loads((ev / "results.json").read_text(encoding="utf-8"))
-    assert live["playbook"]["version"] != "1.0.1" and live["kept"] == "one_prompt"
+    assert live["playbook"]["version"] == "1.0.0" and live["kept"] == "one_prompt"
+    assert 'version: "1.0.0"' in PLAYBOOK and f'version: "{version}"' not in PLAYBOOK

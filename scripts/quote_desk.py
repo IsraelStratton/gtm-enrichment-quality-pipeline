@@ -16,6 +16,8 @@ every line of it is kept.
   python scripts/quote_desk.py eval --design all                  # all three, rounds from the bar
   python scripts/quote_desk.py eval --design one_prompt --only Q-0017,Q-0019 --rounds 1
   python scripts/quote_desk.py eval --design all --log --save     # also write the run log and the results files
+  python scripts/quote_desk.py eval --design all --log --save --playbook skins/quote-desk/eval/playbook-1.0.2-candidate.md \
+      --results results-1.0.2-candidate                         # test a candidate the desk does not read
 
 The Claude key is read from .env (ANTHROPIC_API_KEY) and never printed. Nothing is written to
 Salesforce and nothing is sent to anyone: this is the AI step on its own.
@@ -57,10 +59,10 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
-def load_inputs() -> dict:
+def load_inputs(playbook: Path = PLAYBOOK) -> dict:
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     return {
-        "playbook_text": PLAYBOOK.read_text(encoding="utf-8"),
+        "playbook_text": playbook.read_text(encoding="utf-8"),
         "cases": cases["cases"],
         "as_of": cases["as_of"],
         "products": json.loads(SETUP.read_text(encoding="utf-8"))["products"],
@@ -267,7 +269,7 @@ def run_eval(args) -> int:
         print("CONFIG ERROR ANTHROPIC_API_KEY is not in .env")
         return 2
     try:
-        inp = load_inputs()
+        inp = load_inputs(args.playbook)
         eng = Engine(module="quotes")
         cases = inp["cases"]
         if args.only:
@@ -353,9 +355,10 @@ def run_eval(args) -> int:
         for d in slim["designs"].values():
             for r in d["cases"]:
                 r.pop("grade", None)
-        RESULTS_JSON.write_text(json.dumps(slim, indent=2) + "\n", encoding="utf-8")
-        RESULTS_MD.write_text(results_markdown(out), encoding="utf-8")
-        print(f"Saved {RESULTS_JSON.relative_to(REPO)} and {RESULTS_MD.relative_to(REPO)}.")
+        res_json, res_md = RESULTS_JSON.with_name(f"{args.results}.json"), RESULTS_MD.with_name(f"{args.results}.md")
+        res_json.write_text(json.dumps(slim, indent=2) + "\n", encoding="utf-8")
+        res_md.write_text(results_markdown(out), encoding="utf-8")
+        print(f"Saved {res_json.relative_to(REPO)} and {res_md.relative_to(REPO)}.")
     if args.log:
         try:
             n = sum(log_triage(*batch) for batch in log_batches.values())
@@ -376,8 +379,12 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--model", default="claude-haiku-5-5")
     ev.add_argument("--workers", type=int, default=6)
     ev.add_argument("--log", action="store_true", help="write the triages, calls and hand-offs to the run log")
-    ev.add_argument("--save", action="store_true", help="write skins/quote-desk/eval/results.json and results.md")
+    ev.add_argument("--save", action="store_true", help="write skins/quote-desk/eval/<results>.json and .md")
+    ev.add_argument("--playbook", type=Path, default=PLAYBOOK, help="the playbook to test (default: the live one the desk reads)")
+    ev.add_argument("--results", default="results", help="file name for --save, without .json or .md (default: results)")
     args = ap.parse_args(argv)
+    if args.save and args.results == "results" and args.playbook.resolve() != PLAYBOOK.resolve():
+        ap.error("a candidate playbook's results need their own --results name: results.json is the live playbook's")
     return run_eval(args)
 
 
